@@ -128,42 +128,89 @@ async function syncContactToGHL(member) {
             'Content-Type': 'application/json'
         };
         
-        // First, try to find if contact already exists in GHL
+        // First, search for existing contact by email
         let contactExists = false;
         let existingContactId = null;
         
         try {
+            // Search using query parameter
             const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
                 headers: headers,
                 params: { 
                     locationId: GHL_LOCATION_ID,
-                    email: contactData.email 
+                    query: contactData.email
                 }
             });
             
+            // Check if we found the contact
             if (searchResponse.data && searchResponse.data.contacts && searchResponse.data.contacts.length > 0) {
-                contactExists = true;
-                existingContactId = searchResponse.data.contacts[0].id;
+                // Find exact email match
+                const exactMatch = searchResponse.data.contacts.find(
+                    c => c.email && c.email.toLowerCase() === contactData.email.toLowerCase()
+                );
+                
+                if (exactMatch) {
+                    contactExists = true;
+                    existingContactId = exactMatch.id;
+                    console.log(`Found existing contact: ${contactData.email} (ID: ${existingContactId})`);
+                }
             }
         } catch (searchError) {
-            // Contact doesn't exist, we'll create it
-            console.log(`Contact not found in GHL, will create new: ${contactData.email}`);
+            console.log(`Contact search failed, will try to create: ${contactData.email}`);
         }
         
         // Update or Create contact
-        if (contactExists) {
+        if (contactExists && existingContactId) {
             // UPDATE existing contact
-            const updateUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
-            const response = await axios.put(updateUrl, contactData, { headers: headers });
-            console.log(`Updated contact in GHL: ${contactData.email}`);
-            return { action: 'updated', contact: response.data };
+            try {
+                const updateUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
+                const response = await axios.put(updateUrl, contactData, { headers: headers });
+                console.log(`✅ Updated contact in GHL: ${contactData.email}`);
+                return { action: 'updated', contact: response.data };
+            } catch (updateError) {
+                console.error(`Update failed for ${contactData.email}:`, updateError.response?.data);
+                throw updateError;
+            }
             
         } else {
             // CREATE new contact
-            const createUrl = `${GHL_API_URL}/contacts/`;
-            const response = await axios.post(createUrl, contactData, { headers: headers });
-            console.log(`Created contact in GHL: ${contactData.email}`);
-            return { action: 'created', contact: response.data };
+            try {
+                const createUrl = `${GHL_API_URL}/contacts/`;
+                const response = await axios.post(createUrl, contactData, { headers: headers });
+                console.log(`✅ Created contact in GHL: ${contactData.email}`);
+                return { action: 'created', contact: response.data };
+                
+            } catch (createError) {
+                // If create fails with duplicate error, try to find and update
+                if (createError.response?.data?.message?.includes('duplicated') || 
+                    createError.response?.data?.message?.includes('duplicate')) {
+                    
+                    console.log(`Duplicate detected for ${contactData.email}, searching again...`);
+                    
+                    // Try a more thorough search
+                    try {
+                        const retrySearch = await axios.get(`${GHL_API_URL}/contacts/`, {
+                            headers: headers,
+                            params: { 
+                                locationId: GHL_LOCATION_ID,
+                                query: contactData.email
+                            }
+                        });
+                        
+                        if (retrySearch.data?.contacts?.length > 0) {
+                            const foundContact = retrySearch.data.contacts[0];
+                            const updateUrl = `${GHL_API_URL}/contacts/${foundContact.id}`;
+                            const response = await axios.put(updateUrl, contactData, { headers: headers });
+                            console.log(`✅ Updated existing duplicate: ${contactData.email}`);
+                            return { action: 'updated', contact: response.data };
+                        }
+                    } catch (retryError) {
+                        console.error(`Failed to handle duplicate for ${contactData.email}`);
+                    }
+                }
+                
+                throw createError;
+            }
         }
         
     } catch (error) {
