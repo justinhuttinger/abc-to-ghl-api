@@ -99,6 +99,7 @@ async function syncContactToGHL(member) {
             state: personal.state || '',
             postalCode: personal.postalCode || '',
             country: personal.countryCode || '',
+            tags: ['sale'], // Add 'sale' tag to all synced contacts
             // Add custom fields
             customFields: [
                 { key: 'abc_member_id', value: member.memberId || '' },
@@ -113,6 +114,7 @@ async function syncContactToGHL(member) {
                 { key: 'agreement_number', value: agreement.agreementNumber || '' },
                 { key: 'sales_person', value: agreement.salesPersonName || '' },
                 { key: 'converted_date', value: agreement.convertedDate || '' },
+                { key: 'sign_date', value: agreement.signDate || '' },
                 { key: 'next_billing_date', value: agreement.nextBillingDate || '' },
                 { key: 'is_past_due', value: agreement.isPastDue || '' },
                 { key: 'total_check_in_count', value: personal.totalCheckInCount || '' },
@@ -182,11 +184,18 @@ app.get('/', (req, res) => {
     res.json({
         message: 'ABC to GHL Member Sync Server',
         status: 'running',
+        features: {
+            autoYesterdaySync: 'Automatically syncs members who signed yesterday',
+            membershipFiltering: 'Excludes NON-MEMBER and Employee types',
+            autoTagging: 'Adds "sale" tag to all synced contacts',
+            customFields: 'Syncs 15+ fields including membership type and sign date'
+        },
         endpoints: {
             'GET /': 'This message',
             'GET /api/health': 'Health check',
-            'POST /api/sync': 'Sync members from ABC to GHL',
-            'POST /api/sync/:clubNumber': 'Sync members for specific club',
+            'POST /api/sync': 'Sync members (auto-uses yesterday if no dates)',
+            'POST /api/sync-daily': 'Daily sync - always syncs yesterday',
+            'POST /api/sync/:clubNumber': 'Sync specific club',
             'GET /api/test-abc': 'Test ABC API connection',
             'GET /api/test-ghl': 'Test GHL API connection'
         },
@@ -243,7 +252,7 @@ app.get('/api/test-abc', async (req, res) => {
     }
 });
 
-// Test GHL API connection
+// Test GHL API connection with detailed diagnostics
 app.get('/api/test-ghl', async (req, res) => {
     if (!GHL_API_KEY) {
         return res.status(500).json({ error: 'GHL_API_KEY not configured' });
@@ -257,17 +266,25 @@ app.get('/api/test-ghl', async (req, res) => {
     }
     
     try {
-        // GHL API v2 requires Version header and uses location-based endpoints
-        const response = await axios.get(`${GHL_API_URL}/contacts/`, {
-            headers: {
-                'Authorization': `Bearer ${GHL_API_KEY}`,
-                'Version': '2021-07-28',
-                'Content-Type': 'application/json'
-            },
-            params: { 
-                locationId: GHL_LOCATION_ID,
-                limit: 1 
-            }
+        const testUrl = `${GHL_API_URL}/contacts/`;
+        const headers = {
+            'Authorization': `Bearer ${GHL_API_KEY}`,
+            'Version': '2021-07-28',
+            'Content-Type': 'application/json'
+        };
+        const params = { 
+            locationId: GHL_LOCATION_ID,
+            limit: 1 
+        };
+        
+        console.log('Testing GHL API...');
+        console.log('URL:', testUrl);
+        console.log('Headers:', { ...headers, Authorization: `Bearer ${GHL_API_KEY.substring(0, 20)}...` });
+        console.log('Params:', params);
+        
+        const response = await axios.get(testUrl, {
+            headers: headers,
+            params: params
         });
         
         res.json({
@@ -278,18 +295,30 @@ app.get('/api/test-ghl', async (req, res) => {
         });
         
     } catch (error) {
-        res.status(500).json({
+        // Detailed error information
+        const errorDetails = {
             success: false,
             error: error.message,
             statusCode: error.response?.status,
-            details: error.response?.data
-        });
+            statusText: error.response?.statusText,
+            ghlError: error.response?.data,
+            requestInfo: {
+                url: `${GHL_API_URL}/contacts/`,
+                locationId: GHL_LOCATION_ID,
+                keyPrefix: GHL_API_KEY.substring(0, 20) + '...',
+                keyLength: GHL_API_KEY.length
+            }
+        };
+        
+        console.error('GHL API Test Failed:', JSON.stringify(errorDetails, null, 2));
+        
+        res.status(500).json(errorDetails);
     }
 });
 
 // Main sync endpoint with parameters
 app.post('/api/sync', async (req, res) => {
-    const { clubNumber, clubNumbers, startDate, endDate } = req.body;
+    let { clubNumber, clubNumbers, startDate, endDate } = req.body;
     
     // Validate required configuration
     if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY || !GHL_LOCATION_ID) {
@@ -307,11 +336,18 @@ app.post('/api/sync', async (req, res) => {
         return res.status(400).json({
             error: 'clubNumber or clubNumbers required',
             example: {
-                clubNumber: '12345',
-                startDate: '2024-01-01',
-                endDate: '2024-12-31'
+                clubNumber: '30935'
             }
         });
+    }
+    
+    // AUTO-CALCULATE YESTERDAY'S DATE if no dates provided
+    if (!startDate && !endDate) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        startDate = yesterday.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        endDate = startDate; // Same day
+        console.log(`No dates provided. Auto-set to yesterday: ${startDate}`);
     }
     
     try {
@@ -322,9 +358,14 @@ app.post('/api/sync', async (req, res) => {
             totalMembers: 0,
             created: 0,
             updated: 0,
+            skipped: 0,
             errors: 0,
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : 'all time',
             clubs: []
         };
+        
+        // Excluded membership types
+        const excludedMembershipTypes = ['NON-MEMBER', 'Employee'];
         
         // Process each club
         for (const club of clubs) {
@@ -334,6 +375,8 @@ app.post('/api/sync', async (req, res) => {
                 members: 0,
                 created: 0,
                 updated: 0,
+                skipped: 0,
+                skippedMembers: [],
                 errors: [],
                 startTime: new Date().toISOString()
             };
@@ -344,9 +387,27 @@ app.post('/api/sync', async (req, res) => {
                 clubResult.members = members.length || 0;
                 results.totalMembers += clubResult.members;
                 
+                console.log(`Fetched ${members.length} members from ABC`);
+                
                 // Sync each member to GHL
                 for (const member of members) {
                     try {
+                        const membershipType = member.agreement?.membershipType || '';
+                        
+                        // FILTER: Skip excluded membership types
+                        if (excludedMembershipTypes.includes(membershipType)) {
+                            console.log(`Skipping member ${member.personal?.email || member.memberId} - Membership type: ${membershipType}`);
+                            clubResult.skipped++;
+                            results.skipped++;
+                            clubResult.skippedMembers.push({
+                                email: member.personal?.email,
+                                name: `${member.personal?.firstName} ${member.personal?.lastName}`,
+                                membershipType: membershipType,
+                                reason: 'Excluded membership type'
+                            });
+                            continue;
+                        }
+                        
                         const result = await syncContactToGHL(member);
                         
                         if (result.action === 'created') {
@@ -359,7 +420,7 @@ app.post('/api/sync', async (req, res) => {
                         
                     } catch (memberError) {
                         clubResult.errors.push({
-                            member: member.email || member.id,
+                            member: member.personal?.email || member.memberId,
                             error: memberError.message
                         });
                         results.errors++;
@@ -381,6 +442,7 @@ app.post('/api/sync', async (req, res) => {
         console.log(`Total Members: ${results.totalMembers}`);
         console.log(`Created: ${results.created}`);
         console.log(`Updated: ${results.updated}`);
+        console.log(`Skipped: ${results.skipped}`);
         console.log(`Errors: ${results.errors}`);
         
         res.json({
@@ -406,6 +468,33 @@ app.post('/api/sync/:clubNumber', async (req, res) => {
     
     // Redirect to main sync endpoint
     req.body.clubNumber = clubNumber;
+    return app._router.handle(req, res);
+});
+
+// Daily sync endpoint - automatically syncs yesterday's signups
+app.post('/api/sync-daily', async (req, res) => {
+    let { clubNumber, clubNumbers } = req.body;
+    
+    // Default to club 30935 if no club specified
+    if (!clubNumber && !clubNumbers) {
+        clubNumber = '30935';
+        console.log('No club specified, defaulting to club 30935');
+    }
+    
+    // Calculate yesterday's date
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    console.log(`\n=== Daily Sync: ${yesterdayStr} ===`);
+    
+    // Call main sync with yesterday's date
+    req.body.startDate = yesterdayStr;
+    req.body.endDate = yesterdayStr;
+    req.body.clubNumber = clubNumber;
+    req.body.clubNumbers = clubNumbers;
+    
+    // Use the main sync endpoint
     return app._router.handle(req, res);
 });
 
