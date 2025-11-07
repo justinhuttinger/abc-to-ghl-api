@@ -1,0 +1,13 @@
+# ABC Financial API Configuration
+# Get these from your ABC Financial dashboard → Settings → API
+ABC_API_URL=https://api.abcfinancial.com/rest
+ABC_API_KEY=your_abc_api_key_here
+
+# GoHighLevel API Configuration  
+# Get these from GHL: Settings → API → Create API Key
+GHL_API_URL=https://rest.gohighlevel.com/v1
+GHL_API_KEY=your_ghl_api_key_here
+
+# Server Configuration
+PORT=3000
+NODE_ENV=development
