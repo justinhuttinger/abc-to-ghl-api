@@ -10,8 +10,9 @@ app.use(express.json());
 const ABC_API_URL = process.env.ABC_API_URL || 'https://api.abcfinancial.com/rest';
 const ABC_APP_ID = process.env.ABC_APP_ID;
 const ABC_APP_KEY = process.env.ABC_APP_KEY;
-const GHL_API_URL = process.env.GHL_API_URL || 'https://rest.gohighlevel.com/v1';
+const GHL_API_URL = process.env.GHL_API_URL || 'https://services.leadconnectorhq.com';
 const GHL_API_KEY = process.env.GHL_API_KEY;
+const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -88,6 +89,7 @@ async function syncContactToGHL(member) {
         const agreement = member.agreement || {};
         
         const contactData = {
+            locationId: GHL_LOCATION_ID,
             firstName: personal.firstName || '',
             lastName: personal.lastName || '',
             email: personal.email || '',
@@ -98,43 +100,48 @@ async function syncContactToGHL(member) {
             postalCode: personal.postalCode || '',
             country: personal.countryCode || '',
             // Add custom fields
-            customFields: {
-                abc_member_id: member.memberId,
-                abc_club_number: personal.homeClub,
-                barcode: personal.barcode,
-                birth_date: personal.birthDate,
-                gender: personal.gender,
-                member_status: personal.memberStatus,
-                join_status: personal.joinStatus,
-                membership_type: agreement.membershipType,
-                payment_plan: agreement.paymentPlan,
-                agreement_number: agreement.agreementNumber,
-                sales_person: agreement.salesPersonName,
-                converted_date: agreement.convertedDate,
-                next_billing_date: agreement.nextBillingDate,
-                is_past_due: agreement.isPastDue,
-                total_check_in_count: personal.totalCheckInCount,
-                last_check_in: personal.lastCheckInTimestamp
-            }
+            customFields: [
+                { key: 'abc_member_id', value: member.memberId || '' },
+                { key: 'abc_club_number', value: personal.homeClub || '' },
+                { key: 'barcode', value: personal.barcode || '' },
+                { key: 'birth_date', value: personal.birthDate || '' },
+                { key: 'gender', value: personal.gender || '' },
+                { key: 'member_status', value: personal.memberStatus || '' },
+                { key: 'join_status', value: personal.joinStatus || '' },
+                { key: 'membership_type', value: agreement.membershipType || '' },
+                { key: 'payment_plan', value: agreement.paymentPlan || '' },
+                { key: 'agreement_number', value: agreement.agreementNumber || '' },
+                { key: 'sales_person', value: agreement.salesPersonName || '' },
+                { key: 'converted_date', value: agreement.convertedDate || '' },
+                { key: 'next_billing_date', value: agreement.nextBillingDate || '' },
+                { key: 'is_past_due', value: agreement.isPastDue || '' },
+                { key: 'total_check_in_count', value: personal.totalCheckInCount || '' },
+                { key: 'last_check_in', value: personal.lastCheckInTimestamp || '' }
+            ]
+        };
+        
+        const headers = {
+            'Authorization': `Bearer ${GHL_API_KEY}`,
+            'Version': '2021-07-28',
+            'Content-Type': 'application/json'
         };
         
         // First, try to find if contact already exists in GHL
-        const searchUrl = `${GHL_API_URL}/contacts/lookup`;
         let contactExists = false;
         let existingContactId = null;
         
         try {
-            const searchResponse = await axios.get(searchUrl, {
-                headers: {
-                    'Authorization': `Bearer ${GHL_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                params: { email: contactData.email }
+            const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
+                headers: headers,
+                params: { 
+                    locationId: GHL_LOCATION_ID,
+                    email: contactData.email 
+                }
             });
             
-            if (searchResponse.data && searchResponse.data.contact) {
+            if (searchResponse.data && searchResponse.data.contacts && searchResponse.data.contacts.length > 0) {
                 contactExists = true;
-                existingContactId = searchResponse.data.contact.id;
+                existingContactId = searchResponse.data.contacts[0].id;
             }
         } catch (searchError) {
             // Contact doesn't exist, we'll create it
@@ -145,30 +152,23 @@ async function syncContactToGHL(member) {
         if (contactExists) {
             // UPDATE existing contact
             const updateUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
-            const response = await axios.put(updateUrl, contactData, {
-                headers: {
-                    'Authorization': `Bearer ${GHL_API_KEY}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await axios.put(updateUrl, contactData, { headers: headers });
             console.log(`Updated contact in GHL: ${contactData.email}`);
             return { action: 'updated', contact: response.data };
             
         } else {
             // CREATE new contact
-            const createUrl = `${GHL_API_URL}/contacts`;
-            const response = await axios.post(createUrl, contactData, {
-                headers: {
-                    'Authorization': `Bearer ${GHL_API_KEY}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const createUrl = `${GHL_API_URL}/contacts/`;
+            const response = await axios.post(createUrl, contactData, { headers: headers });
             console.log(`Created contact in GHL: ${contactData.email}`);
             return { action: 'created', contact: response.data };
         }
         
     } catch (error) {
         console.error('Error syncing to GHL:', error.message);
+        if (error.response) {
+            console.error('GHL API Response:', error.response.data);
+        }
         throw new Error(`GHL API Error: ${error.response?.data?.message || error.message}`);
     }
 }
@@ -192,7 +192,7 @@ app.get('/', (req, res) => {
         },
         configuration: {
             abc_api: ABC_APP_ID && ABC_APP_KEY ? 'configured' : 'NOT CONFIGURED',
-            ghl_api: GHL_API_KEY ? 'configured' : 'NOT CONFIGURED'
+            ghl_api: GHL_API_KEY && GHL_LOCATION_ID ? 'configured' : 'NOT CONFIGURED'
         }
     });
 });
@@ -204,7 +204,7 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString(),
         apis: {
             abc: ABC_APP_ID && ABC_APP_KEY ? 'configured' : 'missing',
-            ghl: GHL_API_KEY ? 'configured' : 'missing'
+            ghl: GHL_API_KEY && GHL_LOCATION_ID ? 'configured' : 'missing'
         }
     });
 });
@@ -249,24 +249,40 @@ app.get('/api/test-ghl', async (req, res) => {
         return res.status(500).json({ error: 'GHL_API_KEY not configured' });
     }
     
+    if (!GHL_LOCATION_ID) {
+        return res.status(500).json({ 
+            error: 'GHL_LOCATION_ID not configured',
+            message: 'Please add your GHL Location ID as environment variable'
+        });
+    }
+    
     try {
-        const response = await axios.get(`${GHL_API_URL}/contacts`, {
+        // GHL API v2 requires Version header and uses location-based endpoints
+        const response = await axios.get(`${GHL_API_URL}/contacts/`, {
             headers: {
                 'Authorization': `Bearer ${GHL_API_KEY}`,
+                'Version': '2021-07-28',
                 'Content-Type': 'application/json'
             },
-            params: { limit: 1 }
+            params: { 
+                locationId: GHL_LOCATION_ID,
+                limit: 1 
+            }
         });
         
         res.json({
             success: true,
             message: 'GHL API connection successful',
+            locationId: GHL_LOCATION_ID,
             contactCount: response.data.contacts?.length || 0
         });
+        
     } catch (error) {
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            statusCode: error.response?.status,
+            details: error.response?.data
         });
     }
 });
@@ -276,12 +292,13 @@ app.post('/api/sync', async (req, res) => {
     const { clubNumber, clubNumbers, startDate, endDate } = req.body;
     
     // Validate required configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY) {
+    if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY || !GHL_LOCATION_ID) {
         return res.status(500).json({
             error: 'API keys not configured',
             abc_app_id: ABC_APP_ID ? 'ok' : 'missing',
             abc_app_key: ABC_APP_KEY ? 'ok' : 'missing',
-            ghl: GHL_API_KEY ? 'ok' : 'missing'
+            ghl_api_key: GHL_API_KEY ? 'ok' : 'missing',
+            ghl_location_id: GHL_LOCATION_ID ? 'ok' : 'missing'
         });
     }
     
@@ -416,6 +433,7 @@ app.listen(PORT, () => {
     console.log(`\n🔑 Configuration Status:`);
     console.log(`   ABC App ID: ${ABC_APP_ID ? '✅ Configured' : '❌ Not configured'}`);
     console.log(`   ABC App Key: ${ABC_APP_KEY ? '✅ Configured' : '❌ Not configured'}`);
-    console.log(`   GHL API: ${GHL_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
+    console.log(`   GHL API Key: ${GHL_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
+    console.log(`   GHL Location ID: ${GHL_LOCATION_ID ? '✅ Configured' : '❌ Not configured'}`);
     console.log(`\n📝 Ready to sync members!\n`);
 });
