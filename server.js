@@ -8,13 +8,14 @@ app.use(express.json());
 // ============================================
 // CONFIGURATION - Read from Environment Variables
 // ============================================
-const ABC_BASE_URL = process.env.ABC_BASE_URL || 'https://api.abcfinancial.com/rest';
+const ABC_API_URL = process.env.ABC_API_URL || 'https://api.abcfinancial.com/rest';
 const ABC_APP_ID = process.env.ABC_APP_ID;
+const ABC_APP_KEY = process.env.ABC_APP_KEY;
 const ABC_CLUB_NUMBER = process.env.ABC_CLUB_NUMBER || '30935';
 
 const GHL_API_KEY = process.env.GHL_API_KEY;
 const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
-const GHL_BASE_URL = process.env.GHL_BASE_URL || 'https://services.leadconnectorhq.com';
+const GHL_API_URL = process.env.GHL_API_URL || 'https://services.leadconnectorhq.com';
 
 // Membership types to EXCLUDE
 const EXCLUDED_MEMBERSHIP_TYPES = ['NON-MEMBER', 'Employee'];
@@ -22,6 +23,9 @@ const EXCLUDED_MEMBERSHIP_TYPES = ['NON-MEMBER', 'Employee'];
 // Validate required environment variables
 if (!ABC_APP_ID) {
     console.error('ERROR: ABC_APP_ID environment variable is required');
+}
+if (!ABC_APP_KEY) {
+    console.error('ERROR: ABC_APP_KEY environment variable is required');
 }
 if (!GHL_API_KEY) {
     console.error('ERROR: GHL_API_KEY environment variable is required');
@@ -76,7 +80,7 @@ app.get('/api/health', (req, res) => {
         status: 'healthy',
         timestamp: new Date().toISOString(),
         config: {
-            abcBaseUrl: ABC_BASE_URL,
+            abcBaseUrl: ABC_API_URL,
             abcAppId: ABC_APP_ID,
             abcClubNumber: ABC_CLUB_NUMBER,
             ghlLocationId: GHL_LOCATION_ID,
@@ -95,9 +99,10 @@ app.post('/api/test-abc', async (req, res) => {
 
         console.log(`Testing ABC API for club ${club}, dates ${start} to ${end}`);
 
-        const abcUrl = `${ABC_BASE_URL}/members/checkIns`;
+        const abcUrl = `${ABC_API_URL}/members/checkIns`;
         const params = {
             appId: ABC_APP_ID,
+            appKey: ABC_APP_KEY,
             clubNumber: club,
             startDate: formatDate(start),
             endDate: formatDate(end)
@@ -158,7 +163,7 @@ app.post('/api/test-ghl', async (req, res) => {
         console.log('Testing GHL API with test contact');
 
         // Try to search for existing contact first
-        const searchUrl = `${GHL_BASE_URL}/contacts/search/duplicate`;
+        const searchUrl = `${GHL_API_URL}/contacts/search/duplicate`;
         const searchResponse = await axios.post(
             searchUrl,
             {
@@ -179,7 +184,7 @@ app.post('/api/test-ghl', async (req, res) => {
             message: 'GHL API connection successful!',
             config: {
                 locationId: GHL_LOCATION_ID,
-                baseUrl: GHL_BASE_URL
+                baseUrl: GHL_API_URL
             },
             testResult: {
                 contactFound: searchResponse.data.contact ? true : false,
@@ -216,9 +221,10 @@ app.post('/api/sync', async (req, res) => {
         console.log(`Time: ${new Date().toISOString()}`);
 
         // Get members from ABC
-        const abcUrl = `${ABC_BASE_URL}/members/checkIns`;
+        const abcUrl = `${ABC_API_URL}/members/checkIns`;
         const params = {
             appId: ABC_APP_ID,
+            appKey: ABC_APP_KEY,
             clubNumber: club,
             startDate: formatDate(yesterday),
             endDate: formatDate(yesterday)
@@ -270,7 +276,7 @@ app.post('/api/sync', async (req, res) => {
                 console.log(`Processing: ${member.firstName} ${member.lastName} (${member.membershipType})`);
 
                 // Check if contact exists
-                const searchUrl = `${GHL_BASE_URL}/contacts/search/duplicate`;
+                const searchUrl = `${GHL_API_URL}/contacts/search/duplicate`;
                 const searchResponse = await axios.post(
                     searchUrl,
                     {
@@ -299,7 +305,7 @@ app.post('/api/sync', async (req, res) => {
                     // Update existing contact
                     console.log(`  → Updating existing contact ID: ${existingContact.id}`);
                     await axios.put(
-                        `${GHL_BASE_URL}/contacts/${existingContact.id}`,
+                        `${GHL_API_URL}/contacts/${existingContact.id}`,
                         contactData,
                         {
                             headers: {
@@ -315,7 +321,7 @@ app.post('/api/sync', async (req, res) => {
                     console.log(`  → Creating new contact`);
                     contactData.locationId = GHL_LOCATION_ID;
                     await axios.post(
-                        `${GHL_BASE_URL}/contacts/`,
+                        `${GHL_API_URL}/contacts/`,
                         contactData,
                         {
                             headers: {
@@ -385,9 +391,10 @@ app.post('/api/sync-date', async (req, res) => {
         console.log(`Time: ${new Date().toISOString()}`);
 
         // Get members from ABC
-        const abcUrl = `${ABC_BASE_URL}/members/checkIns`;
+        const abcUrl = `${ABC_API_URL}/members/checkIns`;
         const params = {
             appId: ABC_APP_ID,
+            appKey: ABC_APP_KEY,
             clubNumber: club,
             startDate: formatDate(startDate),
             endDate: formatDate(endDate)
@@ -439,7 +446,7 @@ app.post('/api/sync-date', async (req, res) => {
                 console.log(`Processing: ${member.firstName} ${member.lastName} (${member.membershipType})`);
 
                 // Check if contact exists
-                const searchUrl = `${GHL_BASE_URL}/contacts/search/duplicate`;
+                const searchUrl = `${GHL_API_URL}/contacts/search/duplicate`;
                 const searchResponse = await axios.post(
                     searchUrl,
                     {
@@ -468,7 +475,7 @@ app.post('/api/sync-date', async (req, res) => {
                     // Update existing contact
                     console.log(`  → Updating existing contact ID: ${existingContact.id}`);
                     await axios.put(
-                        `${GHL_BASE_URL}/contacts/${existingContact.id}`,
+                        `${GHL_API_URL}/contacts/${existingContact.id}`,
                         contactData,
                         {
                             headers: {
@@ -484,7 +491,7 @@ app.post('/api/sync-date', async (req, res) => {
                     console.log(`  → Creating new contact`);
                     contactData.locationId = GHL_LOCATION_ID;
                     await axios.post(
-                        `${GHL_BASE_URL}/contacts/`,
+                        `${GHL_API_URL}/contacts/`,
                         contactData,
                         {
                             headers: {
