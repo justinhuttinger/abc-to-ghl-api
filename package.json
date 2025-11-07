@@ -2,10 +2,10 @@
   "name": "abc-ghl-sync-server",
   "version": "1.0.0",
   "description": "Sync members from ABC Financial to GoHighLevel CRM",
-  "main": "abc-ghl-sync-server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node abc-ghl-sync-server.js",
-    "dev": "nodemon abc-ghl-sync-server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": ["abc", "gohighlevel", "ghl", "crm", "sync", "integration"],
   "author": "",
