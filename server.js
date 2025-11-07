@@ -161,10 +161,13 @@ async function syncContactToGHL(member) {
         
         // Update or Create contact
         if (contactExists && existingContactId) {
-            // UPDATE existing contact
+            // UPDATE existing contact - REMOVE locationId for update
             try {
+                const updateData = { ...contactData };
+                delete updateData.locationId; // locationId not allowed in update
+                
                 const updateUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
-                const response = await axios.put(updateUrl, contactData, { headers: headers });
+                const response = await axios.put(updateUrl, updateData, { headers: headers });
                 console.log(`✅ Updated contact in GHL: ${contactData.email}`);
                 return { action: 'updated', contact: response.data };
             } catch (updateError) {
@@ -173,7 +176,7 @@ async function syncContactToGHL(member) {
             }
             
         } else {
-            // CREATE new contact
+            // CREATE new contact - locationId IS required here
             try {
                 const createUrl = `${GHL_API_URL}/contacts/`;
                 const response = await axios.post(createUrl, contactData, { headers: headers });
@@ -199,8 +202,11 @@ async function syncContactToGHL(member) {
                         
                         if (retrySearch.data?.contacts?.length > 0) {
                             const foundContact = retrySearch.data.contacts[0];
+                            const updateData = { ...contactData };
+                            delete updateData.locationId; // Remove for update
+                            
                             const updateUrl = `${GHL_API_URL}/contacts/${foundContact.id}`;
-                            const response = await axios.put(updateUrl, contactData, { headers: headers });
+                            const response = await axios.put(updateUrl, updateData, { headers: headers });
                             console.log(`✅ Updated existing duplicate: ${contactData.email}`);
                             return { action: 'updated', contact: response.data };
                         }
