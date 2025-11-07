@@ -6,18 +6,29 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // ============================================
-// CONFIGURATION
+// CONFIGURATION - Read from Environment Variables
 // ============================================
-const ABC_BASE_URL = 'https://api.abcfinancial.com/rest';
-const ABC_APP_ID = 'e0175f2c-01a6-47e9-8f6f-b3c84f83e78c';
-const ABC_CLUB_NUMBER = '30935';
+const ABC_BASE_URL = process.env.ABC_BASE_URL || 'https://api.abcfinancial.com/rest';
+const ABC_APP_ID = process.env.ABC_APP_ID;
+const ABC_CLUB_NUMBER = process.env.ABC_CLUB_NUMBER || '30935';
 
-const GHL_API_KEY = 'pat-na-d53f3577-6da9-4a4f-a7b0-6b6ce65b6c8a';
-const GHL_LOCATION_ID = 'Yd4DiauKiMAS5n85BXYT';
-const GHL_BASE_URL = 'https://services.leadconnectorhq.com';
+const GHL_API_KEY = process.env.GHL_API_KEY;
+const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
+const GHL_BASE_URL = process.env.GHL_BASE_URL || 'https://services.leadconnectorhq.com';
 
 // Membership types to EXCLUDE
 const EXCLUDED_MEMBERSHIP_TYPES = ['NON-MEMBER', 'Employee'];
+
+// Validate required environment variables
+if (!ABC_APP_ID) {
+    console.error('ERROR: ABC_APP_ID environment variable is required');
+}
+if (!GHL_API_KEY) {
+    console.error('ERROR: GHL_API_KEY environment variable is required');
+}
+if (!GHL_LOCATION_ID) {
+    console.error('ERROR: GHL_LOCATION_ID environment variable is required');
+}
 
 // ============================================
 // HELPER FUNCTIONS
