@@ -8,7 +8,7 @@ app.use(express.json());
 // ============================================
 // CONFIGURATION
 // ============================================
-const ABC_BASE_URL = 'https://apitest.abcfinancial.com/rest';
+const ABC_BASE_URL = 'https://api.abcfinancial.com/rest';
 const ABC_APP_ID = 'e0175f2c-01a6-47e9-8f6f-b3c84f83e78c';
 const ABC_CLUB_NUMBER = '30935';
 
