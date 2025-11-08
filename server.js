@@ -184,7 +184,7 @@ async function fetchMemberByIdFromABC(clubNumber, memberId) {
     try {
         const url = `${ABC_API_URL}/${clubNumber}/members`;
         
-        console.log(`Fetching member ${memberId} from ABC`);
+        console.log(`Fetching member ${memberId} from ABC club ${clubNumber}`);
         
         const response = await axios.get(url, {
             headers: {
@@ -198,11 +198,27 @@ async function fetchMemberByIdFromABC(clubNumber, memberId) {
         });
         
         const members = response.data.members || [];
-        if (members.length > 0) {
-            console.log(`Successfully fetched member ${memberId}`);
+        console.log(`ABC returned ${members.length} members for query memberId=${memberId}`);
+        
+        if (members.length === 0) {
+            throw new Error(`Member ${memberId} not found`);
+        }
+        
+        // Filter to find exact match (in case API returns multiple)
+        const exactMatch = members.find(m => m.memberId === memberId);
+        
+        if (exactMatch) {
+            console.log(`✅ Found exact match for member ${memberId}: ${exactMatch.personal?.firstName} ${exactMatch.personal?.lastName}`);
+            return exactMatch;
+        } else if (members.length === 1) {
+            // If only one returned, assume it's correct
+            console.log(`✅ Using single returned member: ${members[0].personal?.firstName} ${members[0].personal?.lastName}`);
             return members[0];
         } else {
-            throw new Error(`Member ${memberId} not found`);
+            // Multiple returned but no exact match
+            console.log(`⚠️ Multiple members returned but no exact match for ${memberId}`);
+            console.log(`Available memberIds: ${members.map(m => m.memberId).join(', ')}`);
+            throw new Error(`Member ${memberId} not found in results`);
         }
         
     } catch (error) {
@@ -894,6 +910,11 @@ app.post('/api/sync-pt-new', async (req, res) => {
         // Create/update each member with new PT service
         for (const service of services) {
             try {
+                console.log(`\n--- Processing PT Service ---`);
+                console.log(`Service Item: ${service.serviceItem}`);
+                console.log(`Member ID: ${service.memberId}`);
+                console.log(`Member Name: ${service.memberFirstName} ${service.memberLastName}`);
+                
                 // Fetch full member details from ABC
                 const member = await fetchMemberByIdFromABC(clubNumber, service.memberId);
                 
@@ -909,6 +930,8 @@ app.post('/api/sync-pt-new', async (req, res) => {
                     });
                     continue;
                 }
+                
+                console.log(`Member email: ${member.personal.email}`);
                 
                 // Create/update contact in GHL with 'pt current' tag
                 const result = await syncContactToGHL(member, 'pt current');
@@ -1020,6 +1043,11 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
         // Create/update each member with deactivated PT service
         for (const service of deactivatedServices) {
             try {
+                console.log(`\n--- Processing Deactivated PT Service ---`);
+                console.log(`Service Item: ${service.serviceItem}`);
+                console.log(`Member ID: ${service.memberId}`);
+                console.log(`Member Name: ${service.memberFirstName} ${service.memberLastName}`);
+                
                 // Fetch full member details from ABC
                 const member = await fetchMemberByIdFromABC(clubNumber, service.memberId);
                 
@@ -1035,6 +1063,8 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
                     });
                     continue;
                 }
+                
+                console.log(`Member email: ${member.personal.email}`);
                 
                 // Create/update contact in GHL with 'ex pt' tag
                 const result = await syncContactToGHL(member, 'ex pt');
