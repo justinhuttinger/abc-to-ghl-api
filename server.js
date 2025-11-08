@@ -114,7 +114,7 @@ async function syncContactToGHL(member) {
                 { key: 'agreement_number', value: agreement.agreementNumber || '' },
                 { key: 'sales_person', value: agreement.salesPersonName || '' },
                 { key: 'converted_date', value: agreement.convertedDate || '' },
-                { key: 'sign_date', value: agreement.signDate || '' },
+                { key: 'member_sign_date', value: agreement.signDate || '' },
                 { key: 'next_billing_date', value: agreement.nextBillingDate || '' },
                 { key: 'is_past_due', value: agreement.isPastDue || '' },
                 { key: 'total_check_in_count', value: personal.totalCheckInCount || '' },
