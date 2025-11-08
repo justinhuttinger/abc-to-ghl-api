@@ -163,12 +163,23 @@ async function syncContactToGHL(member) {
         if (contactExists && existingContactId) {
             // UPDATE existing contact - REMOVE locationId for update
             try {
+                // First, get existing contact to preserve tags
+                const getUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
+                const existingContact = await axios.get(getUrl, { headers: headers });
+                
+                // Get existing tags and add 'sale' if not present
+                let existingTags = existingContact.data?.contact?.tags || [];
+                if (!existingTags.includes('sale')) {
+                    existingTags.push('sale');
+                }
+                
                 const updateData = { ...contactData };
                 delete updateData.locationId; // locationId not allowed in update
+                updateData.tags = existingTags; // Use combined tags
                 
                 const updateUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
                 const response = await axios.put(updateUrl, updateData, { headers: headers });
-                console.log(`✅ Updated contact in GHL: ${contactData.email}`);
+                console.log(`✅ Updated contact in GHL: ${contactData.email} (added 'sale' tag)`);
                 return { action: 'updated', contact: response.data };
             } catch (updateError) {
                 console.error(`Update failed for ${contactData.email}:`, updateError.response?.data);
@@ -180,7 +191,7 @@ async function syncContactToGHL(member) {
             try {
                 const createUrl = `${GHL_API_URL}/contacts/`;
                 const response = await axios.post(createUrl, contactData, { headers: headers });
-                console.log(`✅ Created contact in GHL: ${contactData.email}`);
+                console.log(`✅ Created contact in GHL: ${contactData.email} (with 'sale' tag)`);
                 return { action: 'created', contact: response.data };
                 
             } catch (createError) {
@@ -202,12 +213,20 @@ async function syncContactToGHL(member) {
                         
                         if (retrySearch.data?.contacts?.length > 0) {
                             const foundContact = retrySearch.data.contacts[0];
+                            
+                            // Get existing tags
+                            let existingTags = foundContact.tags || [];
+                            if (!existingTags.includes('sale')) {
+                                existingTags.push('sale');
+                            }
+                            
                             const updateData = { ...contactData };
                             delete updateData.locationId; // Remove for update
+                            updateData.tags = existingTags; // Use combined tags
                             
                             const updateUrl = `${GHL_API_URL}/contacts/${foundContact.id}`;
                             const response = await axios.put(updateUrl, updateData, { headers: headers });
-                            console.log(`✅ Updated existing duplicate: ${contactData.email}`);
+                            console.log(`✅ Updated existing duplicate: ${contactData.email} (added 'sale' tag)`);
                             return { action: 'updated', contact: response.data };
                         }
                     } catch (retryError) {
