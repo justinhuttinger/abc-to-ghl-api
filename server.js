@@ -431,11 +431,9 @@ app.get('/', (req, res) => {
             'GET /': 'This message',
             'GET /api/health': 'Health check',
             'POST /api/sync': 'Sync new members (tag: sale)',
-            'POST /api/sync-daily': 'Daily new member sync',
             'POST /api/sync-cancelled': 'Sync cancelled members (tag: cancelled / past member)',
             'POST /api/sync-pt-new': 'Sync new PT services (tag: pt current)',
             'POST /api/sync-pt-deactivated': 'Sync deactivated PT (tag: ex pt)',
-            'POST /api/sync/:clubNumber': 'Sync specific club',
             'GET /api/test-abc': 'Test ABC API connection',
             'GET /api/test-ghl': 'Test GHL API connection'
         },
@@ -702,42 +700,6 @@ app.post('/api/sync', async (req, res) => {
 });
 
 // Sync specific club (simplified endpoint)
-app.post('/api/sync/:clubNumber', async (req, res) => {
-    const { clubNumber } = req.params;
-    const { startDate, endDate } = req.body;
-    
-    // Redirect to main sync endpoint
-    req.body.clubNumber = clubNumber;
-    return app._router.handle(req, res);
-});
-
-// Daily sync endpoint - automatically syncs yesterday's signups
-app.post('/api/sync-daily', async (req, res) => {
-    let { clubNumber, clubNumbers } = req.body;
-    
-    // Default to club 30935 if no club specified
-    if (!clubNumber && !clubNumbers) {
-        clubNumber = '30935';
-        console.log('No club specified, defaulting to club 30935');
-    }
-    
-    // Calculate yesterday's date
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    
-    console.log(`\n=== Daily Sync: ${yesterdayStr} ===`);
-    
-    // Call main sync with yesterday's date
-    req.body.startDate = yesterdayStr;
-    req.body.endDate = yesterdayStr;
-    req.body.clubNumber = clubNumber;
-    req.body.clubNumbers = clubNumbers;
-    
-    // Use the main sync endpoint
-    return app._router.handle(req, res);
-});
-
 // Sync cancelled members - automatically syncs members who cancelled yesterday
 app.post('/api/sync-cancelled', async (req, res) => {
     let { clubNumber, startDate, endDate } = req.body;
