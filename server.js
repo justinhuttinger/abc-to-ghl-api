@@ -175,6 +175,105 @@ async function fetchRecurringServicesFromABC(clubNumber, startDate = null, endDa
 }
 
 /**
+ * Search for contact in GHL by name
+ * @param {string} firstName - First name
+ * @param {string} lastName - Last name
+ * @returns {Promise<Object|null>} Contact object or null if not found
+ */
+async function searchGHLByName(firstName, lastName) {
+    try {
+        const headers = {
+            'Authorization': `Bearer ${GHL_API_KEY}`,
+            'Version': '2021-07-28',
+            'Content-Type': 'application/json'
+        };
+        
+        // Search by full name
+        const searchQuery = `${firstName} ${lastName}`;
+        console.log(`Searching GHL for: ${searchQuery}`);
+        
+        const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
+            headers: headers,
+            params: { 
+                locationId: GHL_LOCATION_ID,
+                query: searchQuery
+            }
+        });
+        
+        if (!searchResponse.data?.contacts?.length) {
+            console.log(`❌ No contacts found for ${searchQuery}`);
+            return null;
+        }
+        
+        const contacts = searchResponse.data.contacts;
+        console.log(`Found ${contacts.length} potential matches for ${searchQuery}`);
+        
+        // Try to find exact name match (case insensitive)
+        const exactMatch = contacts.find(c => 
+            c.firstName?.toLowerCase() === firstName.toLowerCase() &&
+            c.lastName?.toLowerCase() === lastName.toLowerCase()
+        );
+        
+        if (exactMatch) {
+            console.log(`✅ Found exact match: ${exactMatch.firstName} ${exactMatch.lastName} (${exactMatch.email})`);
+            return exactMatch;
+        }
+        
+        // If no exact match but only one result, use it
+        if (contacts.length === 1) {
+            console.log(`✅ Using single result: ${contacts[0].firstName} ${contacts[0].lastName} (${contacts[0].email})`);
+            return contacts[0];
+        }
+        
+        // Multiple contacts but no exact match
+        console.log(`⚠️ Multiple contacts found but no exact match`);
+        return null;
+        
+    } catch (error) {
+        console.error(`Error searching GHL for ${firstName} ${lastName}:`, error.message);
+        return null;
+    }
+}
+
+/**
+ * Add tag to existing contact in GHL by contact ID
+ * @param {string} contactId - GHL Contact ID
+ * @param {string} tag - Tag to add
+ * @param {Array} existingTags - Existing tags array
+ * @returns {Promise<Object>} Result object
+ */
+async function addTagToContactById(contactId, tag, existingTags = []) {
+    try {
+        const headers = {
+            'Authorization': `Bearer ${GHL_API_KEY}`,
+            'Version': '2021-07-28',
+            'Content-Type': 'application/json'
+        };
+        
+        // Check if tag already exists
+        if (existingTags.includes(tag)) {
+            console.log(`Tag '${tag}' already exists on contact ${contactId}`);
+            return { action: 'already_tagged' };
+        }
+        
+        // Add new tag
+        const updatedTags = [...existingTags, tag];
+        
+        const updateUrl = `${GHL_API_URL}/contacts/${contactId}`;
+        await axios.put(updateUrl, {
+            tags: updatedTags
+        }, { headers: headers });
+        
+        console.log(`✅ Added '${tag}' tag to contact ${contactId}`);
+        return { action: 'tagged' };
+        
+    } catch (error) {
+        console.error(`Error adding tag to contact ${contactId}:`, error.message);
+        throw error;
+    }
+}
+
+/**
  * Fetch a single member's details from ABC by member ID
  * @param {string} clubNumber - The club number
  * @param {string} memberId - The member ID
@@ -182,9 +281,34 @@ async function fetchRecurringServicesFromABC(clubNumber, startDate = null, endDa
  */
 async function fetchMemberByIdFromABC(clubNumber, memberId) {
     try {
-        const url = `${ABC_API_URL}/${clubNumber}/members`;
+        // Method 1: Try direct endpoint: /clubNumber/members/memberId
+        let url = `${ABC_API_URL}/${clubNumber}/members/${memberId}`;
         
-        console.log(`Fetching member ${memberId} from ABC club ${clubNumber}`);
+        console.log(`Method 1: Trying direct endpoint for member ${memberId}`);
+        
+        try {
+            const directResponse = await axios.get(url, {
+                headers: {
+                    'accept': 'application/json',
+                    'app_id': ABC_APP_ID,
+                    'app_key': ABC_APP_KEY
+                }
+            });
+            
+            // Direct endpoint might return differently
+            const member = directResponse.data.member || directResponse.data.members?.[0] || directResponse.data;
+            
+            if (member && member.memberId === memberId) {
+                console.log(`✅ Found via direct endpoint: ${member.personal?.firstName} ${member.personal?.lastName}`);
+                return member;
+            }
+        } catch (directError) {
+            console.log(`❌ Direct endpoint failed (${directError.response?.status || directError.message})`);
+        }
+        
+        // Method 2: Try query parameter
+        url = `${ABC_API_URL}/${clubNumber}/members`;
+        console.log(`Method 2: Trying query ?memberId=${memberId}`);
         
         const response = await axios.get(url, {
             headers: {
@@ -198,35 +322,24 @@ async function fetchMemberByIdFromABC(clubNumber, memberId) {
         });
         
         const members = response.data.members || [];
-        console.log(`ABC returned ${members.length} members for query memberId=${memberId}`);
+        console.log(`ABC returned ${members.length} members`);
         
-        if (members.length === 0) {
-            throw new Error(`Member ${memberId} not found`);
+        if (members.length > 0) {
+            console.log(`Returned memberIds: ${members.map(m => m.memberId).join(', ')}`);
+            
+            const exactMatch = members.find(m => m.memberId === memberId);
+            
+            if (exactMatch) {
+                console.log(`✅ Found exact match: ${exactMatch.personal?.firstName} ${exactMatch.personal?.lastName}`);
+                return exactMatch;
+            }
         }
         
-        // Filter to find exact match (in case API returns multiple)
-        const exactMatch = members.find(m => m.memberId === memberId);
-        
-        if (exactMatch) {
-            console.log(`✅ Found exact match for member ${memberId}: ${exactMatch.personal?.firstName} ${exactMatch.personal?.lastName}`);
-            return exactMatch;
-        } else if (members.length === 1) {
-            // If only one returned, assume it's correct
-            console.log(`✅ Using single returned member: ${members[0].personal?.firstName} ${members[0].personal?.lastName}`);
-            return members[0];
-        } else {
-            // Multiple returned but no exact match
-            console.log(`⚠️ Multiple members returned but no exact match for ${memberId}`);
-            console.log(`Available memberIds: ${members.map(m => m.memberId).join(', ')}`);
-            throw new Error(`Member ${memberId} not found in results`);
-        }
+        throw new Error(`Member ${memberId} not found via any method`);
         
     } catch (error) {
-        console.error(`Error fetching member ${memberId} from ABC:`, error.message);
-        if (error.response) {
-            console.error('ABC API Response:', error.response.data);
-        }
-        throw new Error(`ABC API Error: ${error.response?.data?.message || error.message}`);
+        console.error(`❌ Failed to fetch member ${memberId}:`, error.message);
+        throw new Error(`Unable to fetch member ${memberId}: ${error.message}`);
     }
 }
 
@@ -894,8 +1007,6 @@ app.post('/api/sync-pt-new', async (req, res) => {
             clubNumber: clubNumber,
             dateRange: `${startDate} to ${endDate}`,
             totalServices: 0,
-            created: 0,
-            updated: 0,
             tagged: 0,
             errors: 0,
             services: []
@@ -907,46 +1018,43 @@ app.post('/api/sync-pt-new', async (req, res) => {
         
         console.log(`Found ${services.length} new PT services`);
         
-        // Create/update each member with new PT service
+        // Tag each member with new PT service (search by name in GHL)
         for (const service of services) {
             try {
                 console.log(`\n--- Processing PT Service ---`);
                 console.log(`Service Item: ${service.serviceItem}`);
-                console.log(`Member ID: ${service.memberId}`);
                 console.log(`Member Name: ${service.memberFirstName} ${service.memberLastName}`);
+                console.log(`Sale Date: ${service.recurringServiceDates?.saleDate}`);
                 
-                // Fetch full member details from ABC
-                const member = await fetchMemberByIdFromABC(clubNumber, service.memberId);
+                // Search for contact in GHL by name
+                const contact = await searchGHLByName(service.memberFirstName, service.memberLastName);
                 
-                if (!member || !member.personal?.email) {
-                    console.log(`⚠️ Member ${service.memberId} has no email, skipping`);
+                if (!contact) {
+                    console.log(`⚠️ Contact not found in GHL for ${service.memberFirstName} ${service.memberLastName}`);
                     results.errors++;
                     results.services.push({
                         memberId: service.memberId,
                         memberName: `${service.memberFirstName} ${service.memberLastName}`,
                         serviceItem: service.serviceItem,
                         saleDate: service.recurringServiceDates?.saleDate,
-                        action: 'no_email'
+                        action: 'not_found_in_ghl'
                     });
                     continue;
                 }
                 
-                console.log(`Member email: ${member.personal.email}`);
+                // Add 'pt current' tag to existing contact
+                const result = await addTagToContactById(contact.id, 'pt current', contact.tags || []);
                 
-                // Create/update contact in GHL with 'pt current' tag
-                const result = await syncContactToGHL(member, 'pt current');
-                
-                if (result.action === 'created') {
-                    results.created++;
-                } else if (result.action === 'updated') {
-                    results.updated++;
+                if (result.action === 'tagged') {
+                    results.tagged++;
+                } else if (result.action === 'already_tagged') {
+                    results.tagged++;
                 }
-                results.tagged++;
                 
                 results.services.push({
                     memberId: service.memberId,
-                    memberName: `${member.personal.firstName} ${member.personal.lastName}`,
-                    email: member.personal.email,
+                    memberName: `${service.memberFirstName} ${service.memberLastName}`,
+                    email: contact.email,
                     serviceItem: service.serviceItem,
                     saleDate: service.recurringServiceDates?.saleDate,
                     salesPerson: `${service.salesPersonFirstName} ${service.salesPersonLastName}`,
@@ -958,14 +1066,14 @@ app.post('/api/sync-pt-new', async (req, res) => {
                 console.error(`Error processing PT service: ${serviceError.message}`);
                 results.services.push({
                     memberId: service.memberId,
+                    memberName: `${service.memberFirstName} ${service.memberLastName}`,
                     error: serviceError.message
                 });
             }
         }
         
         console.log(`\n=== New PT Services Sync Complete ===`);
-        console.log(`Created: ${results.created}`);
-        console.log(`Updated: ${results.updated}`);
+        console.log(`Tagged: ${results.tagged}`);
         console.log(`Errors: ${results.errors}`);
         
         res.json({
@@ -1017,8 +1125,6 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
             clubNumber: clubNumber,
             dateRange: `${startDate} to ${endDate}`,
             totalServices: 0,
-            created: 0,
-            updated: 0,
             tagged: 0,
             errors: 0,
             services: []
@@ -1040,46 +1146,43 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
         
         console.log(`Found ${deactivatedServices.length} deactivated PT services`);
         
-        // Create/update each member with deactivated PT service
+        // Tag each member with deactivated PT service (search by name in GHL)
         for (const service of deactivatedServices) {
             try {
                 console.log(`\n--- Processing Deactivated PT Service ---`);
                 console.log(`Service Item: ${service.serviceItem}`);
-                console.log(`Member ID: ${service.memberId}`);
                 console.log(`Member Name: ${service.memberFirstName} ${service.memberLastName}`);
+                console.log(`Inactive Date: ${service.recurringServiceDates?.inactiveDate}`);
                 
-                // Fetch full member details from ABC
-                const member = await fetchMemberByIdFromABC(clubNumber, service.memberId);
+                // Search for contact in GHL by name
+                const contact = await searchGHLByName(service.memberFirstName, service.memberLastName);
                 
-                if (!member || !member.personal?.email) {
-                    console.log(`⚠️ Member ${service.memberId} has no email, skipping`);
+                if (!contact) {
+                    console.log(`⚠️ Contact not found in GHL for ${service.memberFirstName} ${service.memberLastName}`);
                     results.errors++;
                     results.services.push({
                         memberId: service.memberId,
                         memberName: `${service.memberFirstName} ${service.memberLastName}`,
                         serviceItem: service.serviceItem,
                         inactiveDate: service.recurringServiceDates?.inactiveDate,
-                        action: 'no_email'
+                        action: 'not_found_in_ghl'
                     });
                     continue;
                 }
                 
-                console.log(`Member email: ${member.personal.email}`);
+                // Add 'ex pt' tag to existing contact
+                const result = await addTagToContactById(contact.id, 'ex pt', contact.tags || []);
                 
-                // Create/update contact in GHL with 'ex pt' tag
-                const result = await syncContactToGHL(member, 'ex pt');
-                
-                if (result.action === 'created') {
-                    results.created++;
-                } else if (result.action === 'updated') {
-                    results.updated++;
+                if (result.action === 'tagged') {
+                    results.tagged++;
+                } else if (result.action === 'already_tagged') {
+                    results.tagged++;
                 }
-                results.tagged++;
                 
                 results.services.push({
                     memberId: service.memberId,
-                    memberName: `${member.personal.firstName} ${member.personal.lastName}`,
-                    email: member.personal.email,
+                    memberName: `${service.memberFirstName} ${service.memberLastName}`,
+                    email: contact.email,
                     serviceItem: service.serviceItem,
                     inactiveDate: service.recurringServiceDates?.inactiveDate,
                     deactivateReason: service.recurringServiceDates?.deactivateReason,
@@ -1091,14 +1194,14 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
                 console.error(`Error processing deactivated PT: ${serviceError.message}`);
                 results.services.push({
                     memberId: service.memberId,
+                    memberName: `${service.memberFirstName} ${service.memberLastName}`,
                     error: serviceError.message
                 });
             }
         }
         
         console.log(`\n=== Deactivated PT Services Sync Complete ===`);
-        console.log(`Created: ${results.created}`);
-        console.log(`Updated: ${results.updated}`);
+        console.log(`Tagged: ${results.tagged}`);
         console.log(`Errors: ${results.errors}`);
         
         res.json({
