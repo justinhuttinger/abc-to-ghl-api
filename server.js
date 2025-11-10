@@ -88,17 +88,16 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
     try {
         const url = `${ABC_API_URL}/${clubNumber}/members`;
         
-        const params = {
-            activeStatus: 'Inactive',
-            memberStatus: 'inactive'
-        };
+        // Don't filter by status at API level - ABC's filters don't work as expected
+        // Just get all members in the date range, we'll filter in code
+        const params = {};
         
         // Use memberStatusDate range for when they became inactive
         if (startDate && endDate) {
             params.memberStatusDateRange = `${startDate},${endDate}`;
         }
         
-        console.log(`Fetching cancelled members from ABC: ${url}`, params);
+        console.log(`Fetching members with status date ${startDate} to ${endDate}`);
         
         const response = await axios.get(url, {
             headers: {
@@ -109,9 +108,20 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
             params: params
         });
         
-        const members = response.data.members || [];
-        console.log(`Successfully fetched ${members.length} cancelled members from ABC`);
-        return members;
+        const allMembers = response.data.members || [];
+        console.log(`ABC returned ${allMembers.length} members in date range`);
+        
+        // Filter in code for Cancelled OR Expired status
+        const cancelledMembers = allMembers.filter(member => {
+            const status = member.personal?.memberStatus;
+            return status === 'Cancelled' || status === 'Expired';
+        });
+        
+        console.log(`Filtered to ${cancelledMembers.length} Cancelled/Expired members`);
+        console.log(`  - Cancelled: ${cancelledMembers.filter(m => m.personal?.memberStatus === 'Cancelled').length}`);
+        console.log(`  - Expired: ${cancelledMembers.filter(m => m.personal?.memberStatus === 'Expired').length}`);
+        
+        return cancelledMembers;
         
     } catch (error) {
         console.error('Error fetching cancelled members from ABC:', error.message);
