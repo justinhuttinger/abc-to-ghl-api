@@ -626,6 +626,7 @@ app.get('/', (req, res) => {
         endpoints: {
             'GET /': 'This message',
             'GET /api/health': 'Health check',
+            'GET /api/debug-abc': 'Debug - see raw ABC member data',
             'POST /api/sync': 'Sync new members (tag: sale)',
             'POST /api/sync-cancelled': 'Sync cancelled members (tag: cancelled / past member)',
             'POST /api/sync-pt-new': 'Sync new PT services (tag: pt current)',
@@ -650,6 +651,58 @@ app.get('/api/health', (req, res) => {
             ghl: GHL_API_KEY && GHL_LOCATION_ID ? 'configured' : 'missing'
         }
     });
+});
+
+// Debug endpoint - see raw ABC member data to understand field values
+app.get('/api/debug-abc', async (req, res) => {
+    const { clubNumber = '30935', limit = 10 } = req.query;
+    
+    try {
+        const url = `${ABC_API_URL}/${clubNumber}/members`;
+        
+        console.log('Fetching sample members from ABC for debugging...');
+        
+        const response = await axios.get(url, {
+            headers: {
+                'accept': 'application/json',
+                'app_id': ABC_APP_ID,
+                'app_key': ABC_APP_KEY
+            },
+            params: {
+                size: limit
+            }
+        });
+        
+        const members = response.data.members || [];
+        
+        // Return key fields so we can see what values ABC uses
+        res.json({
+            success: true,
+            totalReturned: members.length,
+            members: members.map(m => ({
+                memberId: m.memberId,
+                name: `${m.personal?.firstName} ${m.personal?.lastName}`,
+                email: m.personal?.email,
+                // Status fields - let's see what values these have
+                isActive: m.personal?.isActive,
+                memberStatus: m.personal?.memberStatus,
+                memberStatusDate: m.personal?.memberStatusDate,
+                memberStatusReason: m.personal?.memberStatusReason,
+                joinStatus: m.personal?.joinStatus,
+                // Dates
+                convertedDate: m.agreement?.convertedDate,
+                signDate: m.agreement?.signDate,
+                membershipType: m.agreement?.membershipType
+            }))
+        });
+        
+    } catch (error) {
+        console.error('Debug endpoint error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
 });
 
 // Test ABC API connection
