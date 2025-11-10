@@ -52,6 +52,12 @@ async function fetchMembersFromABC(clubNumber, startDate = null, endDate = null)
         let members = response.data.members || [];
         console.log(`ABC returned ${members.length} total members`);
         
+        // Filter out prospects - only keep actual members
+        members = members.filter(member => {
+            return member.personal?.joinStatus === 'Member';
+        });
+        console.log(`Filtered to ${members.length} actual members (excluding prospects)`);
+        
         // Filter by signDate if date range provided
         if (startDate && endDate) {
             console.log(`Filtering by signDate between ${startDate} and ${endDate}`);
@@ -108,6 +114,12 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
         
         let members = response.data.members || [];
         console.log(`ABC returned ${members.length} total members`);
+        
+        // Filter out prospects - only keep actual members
+        members = members.filter(member => {
+            return member.personal?.joinStatus === 'Member';
+        });
+        console.log(`Filtered to ${members.length} actual members (excluding prospects)`);
         
         // Filter for Cancelled OR Expired status
         members = members.filter(member => {
