@@ -121,13 +121,12 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
         });
         console.log(`Filtered to ${members.length} actual members (excluding prospects)`);
         
-        // Filter for Cancelled OR Expired status
+        // Filter for inactive members (isActive === "false")
         members = members.filter(member => {
-            const status = member.personal?.memberStatus;
-            return status === 'Cancelled' || status === 'Expired';
+            return member.personal?.isActive === 'false';
         });
         
-        console.log(`Filtered to ${members.length} Cancelled/Expired members`);
+        console.log(`Filtered to ${members.length} inactive members (isActive: false)`);
         
         // Filter by memberStatusDate if date range provided
         if (startDate && endDate) {
@@ -147,9 +146,17 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
             console.log(`Filtered to ${members.length} with memberStatusDate in range`);
         }
         
-        console.log(`Final count:`);
-        console.log(`  - Cancelled: ${members.filter(m => m.personal?.memberStatus === 'Cancelled').length}`);
-        console.log(`  - Expired: ${members.filter(m => m.personal?.memberStatus === 'Expired').length}`);
+        // Log breakdown of statuses
+        const statusCounts = {};
+        members.forEach(m => {
+            const status = m.personal?.memberStatus || 'Unknown';
+            statusCounts[status] = (statusCounts[status] || 0) + 1;
+        });
+        
+        console.log(`Final count by status:`);
+        Object.entries(statusCounts).forEach(([status, count]) => {
+            console.log(`  - ${status}: ${count}`);
+        });
         
         return members;
         
