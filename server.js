@@ -402,9 +402,10 @@ async function fetchMemberByIdFromABC(clubNumber, memberId) {
  * Add or update a contact in GoHighLevel
  * @param {Object} member - Member data from ABC
  * @param {string} customTag - Optional custom tag to add (default: 'sale')
+ * @param {string} serviceEmployee - Optional service employee name for PT clients
  * @returns {Promise<Object>} GHL response
  */
-async function syncContactToGHL(member, customTag = 'sale') {
+async function syncContactToGHL(member, customTag = 'sale', serviceEmployee = null) {
     try {
         // Map ABC member data to GHL contact format
         const personal = member.personal || {};
@@ -440,7 +441,8 @@ async function syncContactToGHL(member, customTag = 'sale') {
                 { key: 'next_billing_date', value: agreement.nextBillingDate || '' },
                 { key: 'is_past_due', value: agreement.isPastDue || '' },
                 { key: 'total_check_in_count', value: personal.totalCheckInCount || '' },
-                { key: 'last_check_in', value: personal.lastCheckInTimestamp || '' }
+                { key: 'last_check_in', value: personal.lastCheckInTimestamp || '' },
+                ...(serviceEmployee ? [{ key: 'service_employee', value: serviceEmployee }] : [])
             ]
         };
         
@@ -1155,8 +1157,12 @@ app.post('/api/sync-pt-new', async (req, res) => {
                 
                 console.log(`Creating/updating contact in GHL...`);
                 
-                // Create/update contact in GHL with 'pt current' tag
-                const result = await syncContactToGHL(member, 'pt current');
+                // Build service employee full name
+                const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
+                console.log(`Service Employee: ${serviceEmployee}`);
+                
+                // Create/update contact in GHL with 'pt current' tag and service employee
+                const result = await syncContactToGHL(member, 'pt current', serviceEmployee || null);
                 
                 if (result.action === 'created') {
                     results.created++;
@@ -1293,8 +1299,12 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
                 
                 console.log(`Creating/updating contact in GHL...`);
                 
-                // Create/update contact in GHL with 'ex pt' tag
-                const result = await syncContactToGHL(member, 'ex pt');
+                // Build service employee full name
+                const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
+                console.log(`Service Employee: ${serviceEmployee}`);
+                
+                // Create/update contact in GHL with 'ex pt' tag and service employee
+                const result = await syncContactToGHL(member, 'ex pt', serviceEmployee || null);
                 
                 if (result.action === 'created') {
                     results.created++;
