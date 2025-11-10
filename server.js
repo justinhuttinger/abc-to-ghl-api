@@ -29,30 +29,16 @@ app.use((req, res, next) => {
  * @param {string} clubNumber - The club number
  * @param {string} startDate - Optional start date (YYYY-MM-DD)
  * @param {string} endDate - Optional end date (YYYY-MM-DD)
- * @param {string} activeStatus - Optional active status filter (default: "Active")
- * @param {string} memberStatus - Optional member status filter (default: "active")
  * @returns {Promise<Array>} Array of members
  */
-async function fetchMembersFromABC(clubNumber, startDate = null, endDate = null, activeStatus = 'Active', memberStatus = 'active') {
+async function fetchMembersFromABC(clubNumber, startDate = null, endDate = null) {
     try {
         const url = `${ABC_API_URL}/${clubNumber}/members`;
         
-        // Build query parameters
-        const params = {
-            activeStatus: activeStatus,
-            memberStatus: memberStatus
-        };
+        // ABC's date filters don't work reliably, so fetch all and filter in code
+        const params = {};
         
-        // ABC uses convertedDateRange format: "2025-10-31,2025-11-05"
-        if (startDate && endDate) {
-            params.convertedDateRange = `${startDate},${endDate}`;
-        } else if (startDate) {
-            // If only startDate, use today as endDate
-            const today = new Date().toISOString().split('T')[0];
-            params.convertedDateRange = `${startDate},${today}`;
-        }
-        
-        console.log(`Fetching members from ABC: ${url}`, params);
+        console.log(`Fetching all members from ABC club ${clubNumber}`);
         
         const response = await axios.get(url, {
             headers: {
@@ -63,9 +49,27 @@ async function fetchMembersFromABC(clubNumber, startDate = null, endDate = null,
             params: params
         });
         
-        // ABC returns members in response.data.members array
-        const members = response.data.members || [];
-        console.log(`Successfully fetched ${members.length} members from ABC`);
+        let members = response.data.members || [];
+        console.log(`ABC returned ${members.length} total members`);
+        
+        // Filter by signDate if date range provided
+        if (startDate && endDate) {
+            console.log(`Filtering by signDate between ${startDate} and ${endDate}`);
+            
+            members = members.filter(member => {
+                const signDate = member.agreement?.signDate;
+                if (!signDate) return false;
+                
+                // Extract just the date part (YYYY-MM-DD)
+                const memberDate = signDate.split('T')[0];
+                
+                // Check if date falls in range
+                return memberDate >= startDate && memberDate <= endDate;
+            });
+            
+            console.log(`Filtered to ${members.length} members with signDate in range`);
+        }
+        
         return members;
         
     } catch (error) {
@@ -88,16 +92,10 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
     try {
         const url = `${ABC_API_URL}/${clubNumber}/members`;
         
-        // Don't filter by status at API level - ABC's filters don't work as expected
-        // Just get all members in the date range, we'll filter in code
+        // ABC's date filters don't work reliably, fetch all and filter in code
         const params = {};
         
-        // Use memberStatusDate range for when they became inactive
-        if (startDate && endDate) {
-            params.memberStatusDateRange = `${startDate},${endDate}`;
-        }
-        
-        console.log(`Fetching members with status date ${startDate} to ${endDate}`);
+        console.log(`Fetching all members from ABC club ${clubNumber}`);
         
         const response = await axios.get(url, {
             headers: {
@@ -108,20 +106,40 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
             params: params
         });
         
-        const allMembers = response.data.members || [];
-        console.log(`ABC returned ${allMembers.length} members in date range`);
+        let members = response.data.members || [];
+        console.log(`ABC returned ${members.length} total members`);
         
-        // Filter in code for Cancelled OR Expired status
-        const cancelledMembers = allMembers.filter(member => {
+        // Filter for Cancelled OR Expired status
+        members = members.filter(member => {
             const status = member.personal?.memberStatus;
             return status === 'Cancelled' || status === 'Expired';
         });
         
-        console.log(`Filtered to ${cancelledMembers.length} Cancelled/Expired members`);
-        console.log(`  - Cancelled: ${cancelledMembers.filter(m => m.personal?.memberStatus === 'Cancelled').length}`);
-        console.log(`  - Expired: ${cancelledMembers.filter(m => m.personal?.memberStatus === 'Expired').length}`);
+        console.log(`Filtered to ${members.length} Cancelled/Expired members`);
         
-        return cancelledMembers;
+        // Filter by memberStatusDate if date range provided
+        if (startDate && endDate) {
+            console.log(`Filtering by memberStatusDate between ${startDate} and ${endDate}`);
+            
+            members = members.filter(member => {
+                const statusDate = member.personal?.memberStatusDate;
+                if (!statusDate) return false;
+                
+                // Extract just the date part (YYYY-MM-DD)
+                const memberDate = statusDate.split('T')[0];
+                
+                // Check if date falls in range
+                return memberDate >= startDate && memberDate <= endDate;
+            });
+            
+            console.log(`Filtered to ${members.length} with memberStatusDate in range`);
+        }
+        
+        console.log(`Final count:`);
+        console.log(`  - Cancelled: ${members.filter(m => m.personal?.memberStatus === 'Cancelled').length}`);
+        console.log(`  - Expired: ${members.filter(m => m.personal?.memberStatus === 'Expired').length}`);
+        
+        return members;
         
     } catch (error) {
         console.error('Error fetching cancelled members from ABC:', error.message);
