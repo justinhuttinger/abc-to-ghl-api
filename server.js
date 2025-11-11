@@ -21,27 +21,20 @@ const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 const NOTIFICATION_EMAIL = process.env.NOTIFICATION_EMAIL || 'justin@wcstrength.com';
 
-// Create email transporter
-let emailTransporter = null;
-if (EMAIL_USER && EMAIL_PASS) {
-    console.log('📧 Email Config:');
-    console.log('   Host:', EMAIL_HOST);
-    console.log('   Port:', EMAIL_PORT);
-    console.log('   User:', EMAIL_USER);
-    console.log('   Pass:', EMAIL_PASS ? 'Set (length: ' + EMAIL_PASS.length + ')' : 'NOT SET');
-    
-    emailTransporter = nodemailer.createTransport({
-        host: EMAIL_HOST,
-        port: EMAIL_PORT,
-        secure: false,
-        auth: {
-            user: EMAIL_USER,
-            pass: EMAIL_PASS
-        }
-    });
-    console.log('✅ Email notifications enabled');
+// Email configuration using SendGrid Web API
+const sgMail = require('@sendgrid/mail');
+let emailEnabled = false;
+
+// For SendGrid, EMAIL_PASS should be the API key
+if (EMAIL_PASS && EMAIL_PASS.startsWith('SG.')) {
+    sgMail.setApiKey(EMAIL_PASS);
+    emailEnabled = true;
+    console.log('✅ Email notifications enabled (SendGrid Web API)');
+    console.log('   Sending from:', EMAIL_USER || 'justin@wcstrength.com');
+    console.log('   Sending to:', NOTIFICATION_EMAIL);
 } else {
-    console.log('⚠️ Email notifications disabled (EMAIL_USER/EMAIL_PASS not configured)');
+    console.log('⚠️ Email notifications disabled (SendGrid API key not found)');
+    console.log('   EMAIL_PASS should start with SG.');
 }
 
 // Load clubs configuration
@@ -68,237 +61,171 @@ app.use((req, res, next) => {
  * @param {boolean} success - Whether sync was successful
  */
 async function sendEmailNotification(subject, results, success = true) {
-    if (!emailTransporter) {
+    if (!emailEnabled) {
         console.log('Email notifications disabled, skipping...');
         return;
     }
     
     try {
-        let html = `
-            <h2>${subject}</h2>
-            <p><strong>Status:</strong> ${success ? '✅ SUCCESS' : '❌ FAILED'}</p>
-            <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
-            <hr>
-        `;
+        let html = '<h2>' + subject + '</h2>';
+        html += '<p><strong>Status:</strong> ' + (success ? '✅ SUCCESS' : '❌ FAILED') + '</p>';
+        html += '<p><strong>Timestamp:</strong> ' + new Date().toISOString() + '</p>';
+        html += '<hr>';
         
         if (success) {
-            html += `
-                <h3>Summary</h3>
-                <ul>
-                    <li><strong>Total Clubs:</strong> ${results.totalClubs || 'N/A'}</li>
-                    <li><strong>Total Members/Services:</strong> ${results.totalMembers || results.totalServices || 0}</li>
-                    <li><strong>Created:</strong> ${results.created || 0}</li>
-                    <li><strong>Updated:</strong> ${results.updated || 0}</li>
-                    <li><strong>Tagged:</strong> ${results.tagged || 0}</li>
-                    <li><strong>Already Tagged:</strong> ${results.alreadyTagged || 0}</li>
-                    <li><strong>Skipped:</strong> ${results.skipped || 0}</li>
-                    <li><strong>Not Found:</strong> ${results.notFound || 0}</li>
-                    <li><strong>Errors:</strong> ${results.errors || 0}</li>
-                </ul>
-                
-                <h3>Per-Club Results</h3>
-            `;
-            
-            if (results.clubs && results.clubs.length > 0) {
-                results.clubs.forEach(club => {
-                    html += `
-                        <h4>${club.clubName} (${club.clubNumber})</h4>
-                        <ul>
-                            <li>Members/Services: ${club.members || club.totalMembers || club.totalServices || 0}</li>
-                            <li>Created: ${club.created || 0}</li>
-                            <li>Updated: ${club.updated || 0}</li>
-                            <li>Tagged: ${club.tagged || 0}</li>
-                            <li>Errors: ${club.errors || (Array.isArray(club.errors) ? club.errors.length : 0)}</li>
-                        </ul>
-                    `;
-                });
-            }
-            
-            if (results.dateRange) {
-                html += `<p><strong>Date Range:</strong> ${results.dateRange}</p>`;
-            }
-            
+            html += '<h3>Summary</h3><ul>';
+            html += '<li><strong>Total Clubs:</strong> ' + (results.totalClubs || 'N/A') + '</li>';
+            html += '<li><strong>Total Members/Services:</strong> ' + (results.totalMembers || results.totalServices || 0) + '</li>';
+            html += '<li><strong>Created:</strong> ' + (results.created || 0) + '</li>';
+            html += '<li><strong>Updated:</strong> ' + (results.updated || 0) + '</li>';
+            html += '<li><strong>Tagged:</strong> ' + (results.tagged || 0) + '</li>';
+            html += '<li><strong>Skipped:</strong> ' + (results.skipped || 0) + '</li>';
+            html += '<li><strong>Errors:</strong> ' + (results.errors || 0) + '</li>';
+            html += '</ul>';
         } else {
-            html += `
-                <h3>Error Details</h3>
-                <p>${results.error || 'Unknown error occurred'}</p>
-                <pre>${JSON.stringify(results, null, 2)}</pre>
-            `;
+            html += '<h3>Error Details</h3>';
+            html += '<p>' + (results.error || 'Unknown error occurred') + '</p>';
         }
         
-        await emailTransporter.sendMail({
-            from: `"WCS Sync Server" <${EMAIL_USER}>`,
+        const msg = {
             to: NOTIFICATION_EMAIL,
+            from: EMAIL_USER || 'justin@wcstrength.com',
             subject: subject,
             html: html
-        });
+        };
         
-        console.log(`📧 Email notification sent to ${NOTIFICATION_EMAIL}`);
+        await sgMail.send(msg);
+        console.log('📧 Email sent successfully to ' + NOTIFICATION_EMAIL);
         
     } catch (error) {
-        console.error('Failed to send email notification:', error.message);
+        console.error('Failed to send email:', error.message);
+        if (error.response) {
+            console.error('SendGrid error:', error.response.body);
+        }
     }
 }
 
-/**
- * Send master sync email with results from all endpoints
- */
 async function sendMasterSyncEmail(masterResults, success = true) {
-    if (!emailTransporter) {
+    if (!emailEnabled) {
         console.log('Email notifications disabled, skipping...');
         return;
     }
     
     try {
-        let html = `
-            <h1>🚀 Daily WCS Sync Report</h1>
-            <p><strong>Status:</strong> ${success ? '✅ ALL SYNCS COMPLETE' : '❌ SOME SYNCS FAILED'}</p>
-            <p><strong>Start Time:</strong> ${masterResults.startTime}</p>
-            <p><strong>End Time:</strong> ${masterResults.endTime}</p>
-            <p><strong>Total Duration:</strong> ${masterResults.totalDuration}</p>
-            <hr>
-        `;
+        let html = '<h1>🚀 Daily WCS Sync Report</h1>';
+        html += '<p><strong>Status:</strong> ' + (success ? '✅ ALL SYNCS COMPLETE' : '❌ SOME SYNCS FAILED') + '</p>';
+        html += '<p><strong>Start Time:</strong> ' + masterResults.startTime + '</p>';
+        html += '<p><strong>End Time:</strong> ' + masterResults.endTime + '</p>';
+        html += '<p><strong>Total Duration:</strong> ' + masterResults.totalDuration + '</p>';
+        html += '<hr>';
         
         // 1. New Members
         if (masterResults.syncs.newMembers) {
             const sync = masterResults.syncs.newMembers;
-            html += `
-                <h2>1️⃣ New Members Sync</h2>
-                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
-            `;
+            html += '<h2>1️⃣ New Members Sync</h2>';
+            html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
                 const r = sync.results;
-                html += `
-                    <ul>
-                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
-                        <li><strong>Total Members:</strong> ${r.totalMembers}</li>
-                        <li><strong>Created:</strong> ${r.created}</li>
-                        <li><strong>Updated:</strong> ${r.updated}</li>
-                        <li><strong>Skipped:</strong> ${r.skipped}</li>
-                        <li><strong>Errors:</strong> ${r.errors}</li>
-                        <li><strong>Date Range:</strong> ${r.dateRange}</li>
-                    </ul>
-                `;
+                html += '<ul>';
+                html += '<li><strong>Total Clubs:</strong> ' + r.totalClubs + '</li>';
+                html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
+                html += '<li><strong>Created:</strong> ' + r.created + '</li>';
+                html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
+                html += '<li><strong>Skipped:</strong> ' + r.skipped + '</li>';
+                html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
+                html += '</ul>';
             } else {
-                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+                html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
         }
         
         // 2. Cancelled Members
         if (masterResults.syncs.cancelledMembers) {
             const sync = masterResults.syncs.cancelledMembers;
-            html += `
-                <h2>2️⃣ Cancelled Members Sync</h2>
-                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
-            `;
+            html += '<h2>2️⃣ Cancelled Members Sync</h2>';
+            html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
                 const r = sync.results;
-                html += `
-                    <ul>
-                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
-                        <li><strong>Total Members:</strong> ${r.totalMembers}</li>
-                        <li><strong>Tagged:</strong> ${r.tagged}</li>
-                        <li><strong>Already Tagged:</strong> ${r.alreadyTagged}</li>
-                        <li><strong>Not Found:</strong> ${r.notFound}</li>
-                        <li><strong>Errors:</strong> ${r.errors}</li>
-                    </ul>
-                `;
+                html += '<ul>';
+                html += '<li><strong>Total Clubs:</strong> ' + r.totalClubs + '</li>';
+                html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
+                html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
+                html += '<li><strong>Already Tagged:</strong> ' + r.alreadyTagged + '</li>';
+                html += '<li><strong>Not Found:</strong> ' + r.notFound + '</li>';
+                html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
+                html += '</ul>';
             } else {
-                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+                html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
         }
         
         // 3. Past Due Members
         if (masterResults.syncs.pastDueMembers) {
             const sync = masterResults.syncs.pastDueMembers;
-            html += `
-                <h2>3️⃣ Past Due Members Sync (3 Days)</h2>
-                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
-            `;
+            html += '<h2>3️⃣ Past Due Members Sync</h2>';
+            html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
                 const r = sync.results;
-                html += `
-                    <ul>
-                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
-                        <li><strong>Total Members:</strong> ${r.totalMembers}</li>
-                        <li><strong>Tagged:</strong> ${r.tagged}</li>
-                        <li><strong>Already Tagged:</strong> ${r.alreadyTagged}</li>
-                        <li><strong>Not Found:</strong> ${r.notFound}</li>
-                        <li><strong>Errors:</strong> ${r.errors}</li>
-                    </ul>
-                `;
+                html += '<ul>';
+                html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
+                html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
+                html += '</ul>';
             } else {
-                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+                html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
         }
         
         // 4. New PT Services
         if (masterResults.syncs.newPTServices) {
             const sync = masterResults.syncs.newPTServices;
-            html += `
-                <h2>4️⃣ New PT Services Sync</h2>
-                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
-            `;
+            html += '<h2>4️⃣ New PT Services Sync</h2>';
+            html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
                 const r = sync.results;
-                html += `
-                    <ul>
-                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
-                        <li><strong>Total Services:</strong> ${r.totalServices}</li>
-                        <li><strong>Created:</strong> ${r.created}</li>
-                        <li><strong>Updated:</strong> ${r.updated}</li>
-                        <li><strong>Tagged:</strong> ${r.tagged}</li>
-                        <li><strong>Errors:</strong> ${r.errors}</li>
-                    </ul>
-                `;
+                html += '<ul>';
+                html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
+                html += '<li><strong>Created:</strong> ' + r.created + '</li>';
+                html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
+                html += '</ul>';
             } else {
-                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+                html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
         }
         
         // 5. Deactivated PT Services
         if (masterResults.syncs.deactivatedPTServices) {
             const sync = masterResults.syncs.deactivatedPTServices;
-            html += `
-                <h2>5️⃣ Deactivated PT Services Sync</h2>
-                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
-            `;
+            html += '<h2>5️⃣ Deactivated PT Services Sync</h2>';
+            html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
                 const r = sync.results;
-                html += `
-                    <ul>
-                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
-                        <li><strong>Total Services:</strong> ${r.totalServices}</li>
-                        <li><strong>Created:</strong> ${r.created}</li>
-                        <li><strong>Updated:</strong> ${r.updated}</li>
-                        <li><strong>Tagged:</strong> ${r.tagged}</li>
-                        <li><strong>Errors:</strong> ${r.errors}</li>
-                    </ul>
-                `;
+                html += '<ul>';
+                html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
+                html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
+                html += '</ul>';
             } else {
-                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+                html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
         }
         
-        html += `
-            <hr>
-            <p style="color: #666; font-size: 12px;">
-                This is an automated report from your WCS Sync Server.<br>
-                Report generated at ${new Date().toLocaleString()}
-            </p>
-        `;
+        html += '<hr>';
+        html += '<p style="color: #666; font-size: 12px;">Automated report from WCS Sync Server</p>';
         
-        await emailTransporter.sendMail({
-            from: `"WCS Sync Server" <${EMAIL_USER}>`,
+        const msg = {
             to: NOTIFICATION_EMAIL,
-            subject: success ? `✅ Daily Sync Complete - ${masterResults.totalDuration}` : `❌ Daily Sync Failed`,
+            from: EMAIL_USER || 'justin@wcstrength.com',
+            subject: success ? '✅ Daily Sync Complete - ' + masterResults.totalDuration : '❌ Daily Sync Failed',
             html: html
-        });
+        };
         
-        console.log(`📧 Master sync email sent to ${NOTIFICATION_EMAIL}`);
+        await sgMail.send(msg);
+        console.log('📧 Master sync email sent to ' + NOTIFICATION_EMAIL);
         
     } catch (error) {
         console.error('Failed to send master sync email:', error.message);
+        if (error.response) {
+            console.error('SendGrid error:', error.response.body);
+        }
     }
 }
 
