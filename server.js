@@ -462,7 +462,7 @@ async function searchGHLByName(firstName, lastName) {
         const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
             headers: headers,
             params: { 
-                locationId: GHL_LOCATION_ID,
+                locationId: ghlLocationId,
                 query: searchQuery
             }
         });
@@ -700,7 +700,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
             const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
                 headers: headers,
                 params: { 
-                    locationId: GHL_LOCATION_ID,
+                    locationId: ghlLocationId,
                     query: contactData.email
                 }
             });
@@ -752,7 +752,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
         } else {
             // CREATE new contact - locationId IS required here
             try {
-                const createUrl = `${ghlApiKey}/contacts/`;
+                const createUrl = `${GHL_API_URL}/contacts/`;
                 const response = await axios.post(createUrl, contactData, { headers: headers });
                 console.log(`✅ Created contact in GHL: ${contactData.email} (with '${customTag}' tag)`);
                 return { action: 'created', contact: response.data };
@@ -766,7 +766,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
                     
                     // Try a more thorough search
                     try {
-                        const retrySearch = await axios.get(`${ghlApiKey}/contacts/`, {
+                        const retrySearch = await axios.get(`${GHL_API_URL}/contacts/`, {
                             headers: headers,
                             params: { 
                                 locationId: ghlLocationId,
@@ -825,7 +825,7 @@ async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag)
         };
         
         // Search for contact by email
-        const searchResponse = await axios.get(`${ghlApiKey}/contacts/`, {
+        const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
             headers: headers,
             params: { 
                 locationId: ghlLocationId,
@@ -1034,7 +1034,7 @@ app.get('/api/test-ghl', async (req, res) => {
             'Content-Type': 'application/json'
         };
         const params = { 
-            locationId: GHL_LOCATION_ID,
+            locationId: ghlLocationId,
             limit: 1 
         };
         
@@ -1051,7 +1051,7 @@ app.get('/api/test-ghl', async (req, res) => {
         res.json({
             success: true,
             message: 'GHL API connection successful',
-            locationId: GHL_LOCATION_ID,
+            locationId: ghlLocationId,
             contactCount: response.data.contacts?.length || 0
         });
         
@@ -1065,7 +1065,7 @@ app.get('/api/test-ghl', async (req, res) => {
             ghlError: error.response?.data,
             requestInfo: {
                 url: `${GHL_API_URL}/contacts/`,
-                locationId: GHL_LOCATION_ID,
+                locationId: ghlLocationId,
                 keyPrefix: GHL_API_KEY.substring(0, 20) + '...',
                 keyLength: GHL_API_KEY.length
             }
