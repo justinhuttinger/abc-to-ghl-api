@@ -134,6 +134,169 @@ async function sendEmailNotification(subject, results, success = true) {
     }
 }
 
+/**
+ * Send master sync email with results from all endpoints
+ */
+async function sendMasterSyncEmail(masterResults, success = true) {
+    if (!emailTransporter) {
+        console.log('Email notifications disabled, skipping...');
+        return;
+    }
+    
+    try {
+        let html = `
+            <h1>🚀 Daily WCS Sync Report</h1>
+            <p><strong>Status:</strong> ${success ? '✅ ALL SYNCS COMPLETE' : '❌ SOME SYNCS FAILED'}</p>
+            <p><strong>Start Time:</strong> ${masterResults.startTime}</p>
+            <p><strong>End Time:</strong> ${masterResults.endTime}</p>
+            <p><strong>Total Duration:</strong> ${masterResults.totalDuration}</p>
+            <hr>
+        `;
+        
+        // 1. New Members
+        if (masterResults.syncs.newMembers) {
+            const sync = masterResults.syncs.newMembers;
+            html += `
+                <h2>1️⃣ New Members Sync</h2>
+                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
+            `;
+            if (sync.success) {
+                const r = sync.results;
+                html += `
+                    <ul>
+                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
+                        <li><strong>Total Members:</strong> ${r.totalMembers}</li>
+                        <li><strong>Created:</strong> ${r.created}</li>
+                        <li><strong>Updated:</strong> ${r.updated}</li>
+                        <li><strong>Skipped:</strong> ${r.skipped}</li>
+                        <li><strong>Errors:</strong> ${r.errors}</li>
+                        <li><strong>Date Range:</strong> ${r.dateRange}</li>
+                    </ul>
+                `;
+            } else {
+                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+            }
+        }
+        
+        // 2. Cancelled Members
+        if (masterResults.syncs.cancelledMembers) {
+            const sync = masterResults.syncs.cancelledMembers;
+            html += `
+                <h2>2️⃣ Cancelled Members Sync</h2>
+                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
+            `;
+            if (sync.success) {
+                const r = sync.results;
+                html += `
+                    <ul>
+                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
+                        <li><strong>Total Members:</strong> ${r.totalMembers}</li>
+                        <li><strong>Tagged:</strong> ${r.tagged}</li>
+                        <li><strong>Already Tagged:</strong> ${r.alreadyTagged}</li>
+                        <li><strong>Not Found:</strong> ${r.notFound}</li>
+                        <li><strong>Errors:</strong> ${r.errors}</li>
+                    </ul>
+                `;
+            } else {
+                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+            }
+        }
+        
+        // 3. Past Due Members
+        if (masterResults.syncs.pastDueMembers) {
+            const sync = masterResults.syncs.pastDueMembers;
+            html += `
+                <h2>3️⃣ Past Due Members Sync (3 Days)</h2>
+                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
+            `;
+            if (sync.success) {
+                const r = sync.results;
+                html += `
+                    <ul>
+                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
+                        <li><strong>Total Members:</strong> ${r.totalMembers}</li>
+                        <li><strong>Tagged:</strong> ${r.tagged}</li>
+                        <li><strong>Already Tagged:</strong> ${r.alreadyTagged}</li>
+                        <li><strong>Not Found:</strong> ${r.notFound}</li>
+                        <li><strong>Errors:</strong> ${r.errors}</li>
+                    </ul>
+                `;
+            } else {
+                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+            }
+        }
+        
+        // 4. New PT Services
+        if (masterResults.syncs.newPTServices) {
+            const sync = masterResults.syncs.newPTServices;
+            html += `
+                <h2>4️⃣ New PT Services Sync</h2>
+                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
+            `;
+            if (sync.success) {
+                const r = sync.results;
+                html += `
+                    <ul>
+                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
+                        <li><strong>Total Services:</strong> ${r.totalServices}</li>
+                        <li><strong>Created:</strong> ${r.created}</li>
+                        <li><strong>Updated:</strong> ${r.updated}</li>
+                        <li><strong>Tagged:</strong> ${r.tagged}</li>
+                        <li><strong>Errors:</strong> ${r.errors}</li>
+                    </ul>
+                `;
+            } else {
+                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+            }
+        }
+        
+        // 5. Deactivated PT Services
+        if (masterResults.syncs.deactivatedPTServices) {
+            const sync = masterResults.syncs.deactivatedPTServices;
+            html += `
+                <h2>5️⃣ Deactivated PT Services Sync</h2>
+                <p><strong>Status:</strong> ${sync.success ? '✅ Success' : '❌ Failed'}</p>
+            `;
+            if (sync.success) {
+                const r = sync.results;
+                html += `
+                    <ul>
+                        <li><strong>Total Clubs:</strong> ${r.totalClubs}</li>
+                        <li><strong>Total Services:</strong> ${r.totalServices}</li>
+                        <li><strong>Created:</strong> ${r.created}</li>
+                        <li><strong>Updated:</strong> ${r.updated}</li>
+                        <li><strong>Tagged:</strong> ${r.tagged}</li>
+                        <li><strong>Errors:</strong> ${r.errors}</li>
+                    </ul>
+                `;
+            } else {
+                html += `<p style="color: red;">Error: ${sync.error}</p>`;
+            }
+        }
+        
+        html += `
+            <hr>
+            <p style="color: #666; font-size: 12px;">
+                This is an automated report from your WCS Sync Server.<br>
+                Report generated at ${new Date().toLocaleString()}
+            </p>
+        `;
+        
+        await emailTransporter.sendMail({
+            from: `"WCS Sync Server" <${EMAIL_USER}>`,
+            to: NOTIFICATION_EMAIL,
+            subject: success ? `✅ Daily Sync Complete - ${masterResults.totalDuration}` : `❌ Daily Sync Failed`,
+            html: html
+        });
+        
+        console.log(`📧 Master sync email sent to ${NOTIFICATION_EMAIL}`);
+        
+    } catch (error) {
+        console.error('Failed to send master sync email:', error.message);
+    }
+}
+
+
 // ====================================
 // UTILITY FUNCTIONS
 // ====================================
