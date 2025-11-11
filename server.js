@@ -135,9 +135,10 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
                 hasMorePages = false;
             }
             
-            // Safety limit: stop after 5 pages (25,000 members max)
-            if (currentPage > 5) {
-                console.log(`  Reached page limit of 5`);
+            // Safety limit: stop after 50 pages (250,000 members max)
+            // This prevents infinite loops while supporting very large gym chains
+            if (currentPage > 50) {
+                console.log(`  ⚠️ Reached safety limit of 50 pages (250k members)`);
                 hasMorePages = false;
             }
         }
