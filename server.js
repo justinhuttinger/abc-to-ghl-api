@@ -1,12 +1,8 @@
 const express = require('express');
 const axios = require('axios');
-const fs = require('fs');  // <-- Just add this ONE line
+const fs = require('fs');
 const app = express();
-
-**Also, I notice** your server started on the third attempt and shows:
-```
-GHL API Key: ✅ Configured
-GHL Location ID: ✅ Configured
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
@@ -28,12 +24,15 @@ try {
     console.error('   Server will start but syncs will fail without club configuration');
 }
 
-
 // Logging middleware
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
+
+// ====================================
+// UTILITY FUNCTIONS
+// ====================================
 
 // ====================================
 // UTILITY FUNCTIONS
