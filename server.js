@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -12,6 +13,30 @@ const ABC_API_URL = process.env.ABC_API_URL || 'https://api.abcfinancial.com/res
 const ABC_APP_ID = process.env.ABC_APP_ID;
 const ABC_APP_KEY = process.env.ABC_APP_KEY;
 const GHL_API_URL = process.env.GHL_API_URL || 'https://services.leadconnectorhq.com';
+
+// Email configuration
+const EMAIL_HOST = process.env.EMAIL_HOST || 'smtp.gmail.com';
+const EMAIL_PORT = process.env.EMAIL_PORT || 587;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+const NOTIFICATION_EMAIL = process.env.NOTIFICATION_EMAIL || 'justin@wcstrength.com';
+
+// Create email transporter
+let emailTransporter = null;
+if (EMAIL_USER && EMAIL_PASS) {
+    emailTransporter = nodemailer.createTransport({
+        host: EMAIL_HOST,
+        port: EMAIL_PORT,
+        secure: false,
+        auth: {
+            user: EMAIL_USER,
+            pass: EMAIL_PASS
+        }
+    });
+    console.log('✅ Email notifications enabled');
+} else {
+    console.log('⚠️ Email notifications disabled (EMAIL_USER/EMAIL_PASS not configured)');
+}
 
 // Load clubs configuration
 let clubsConfig = { clubs: [] };
