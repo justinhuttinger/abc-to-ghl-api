@@ -429,8 +429,14 @@ async function fetchRecurringServicesFromABC(clubNumber, startDate = null, endDa
         });
         
         const services = response.data.recurringServices || [];
-        console.log(`Successfully fetched ${services.length} recurring services from ABC`);
-        return services;
+        
+        // FILTER OUT 'FULL ACCESS EUG SPRING' - this is NOT a PT service
+        const filteredServices = services.filter(service => {
+            return service.serviceItem !== 'FULL ACCESS EUG SPRING';
+        });
+        
+        console.log(`Fetched ${services.length} total services, filtered to ${filteredServices.length} (excluded 'FULL ACCESS EUG SPRING')`);
+        return filteredServices;
         
     } catch (error) {
         console.error('Error fetching recurring services from ABC:', error.message);
