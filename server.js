@@ -752,7 +752,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
         } else {
             // CREATE new contact - locationId IS required here
             try {
-                const createUrl = `${GhlApiKey}/contacts/`;
+                const createUrl = `${ghlApiKey}/contacts/`;
                 const response = await axios.post(createUrl, contactData, { headers: headers });
                 console.log(`✅ Created contact in GHL: ${contactData.email} (with '${customTag}' tag)`);
                 return { action: 'created', contact: response.data };
