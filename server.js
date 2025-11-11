@@ -881,10 +881,13 @@ async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag)
 
 // Home endpoint
 app.get('/', (req, res) => {
+    const enabledClubs = clubsConfig.clubs.filter(c => c.enabled !== false);
+    
     res.json({
         message: 'ABC to GHL Member Sync Server',
         status: 'running',
         features: {
+            multiClubSync: 'Syncs all configured clubs at once',
             autoYesterdaySync: 'Automatically syncs members who signed yesterday',
             membershipFiltering: 'Excludes NON-MEMBER and Employee types',
             autoTagging: 'Adds appropriate tags to all synced contacts',
@@ -896,9 +899,9 @@ app.get('/', (req, res) => {
             'GET /': 'This message',
             'GET /api/health': 'Health check',
             'GET /api/debug-abc': 'Debug - see raw ABC member data',
-            'POST /api/sync': 'Sync new members (tag: sale)',
+            'POST /api/sync': 'Sync new members for ALL clubs (tag: sale)',
             'POST /api/sync-cancelled': 'Sync cancelled members (tag: cancelled / past member)',
-            'POST /api/sync-past-due': 'Sync 1-day past due ACTIVE members (tag: past due)',
+            'POST /api/sync-past-due': 'Sync 3-day past due ACTIVE members (tag: past due)',
             'POST /api/sync-pt-new': 'Sync new PT services (tag: pt current)',
             'POST /api/sync-pt-deactivated': 'Sync deactivated PT (tag: ex pt)',
             'GET /api/test-abc': 'Test ABC API connection',
@@ -906,11 +909,12 @@ app.get('/', (req, res) => {
         },
         configuration: {
             abc_api: ABC_APP_ID && ABC_APP_KEY ? 'configured' : 'NOT CONFIGURED',
-            ghl_api: GHL_API_KEY && GHL_LOCATION_ID ? 'configured' : 'NOT CONFIGURED'
+            clubs_loaded: clubsConfig.clubs.length,
+            clubs_enabled: enabledClubs.length,
+            clubs: enabledClubs.map(c => ({ name: c.clubName, number: c.clubNumber }))
         }
     });
 });
-
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({
