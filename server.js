@@ -55,6 +55,85 @@ app.use((req, res, next) => {
     next();
 });
 
+/**
+ * Send email notification with sync results
+ * @param {string} subject - Email subject
+ * @param {Object} results - Results object from sync
+ * @param {boolean} success - Whether sync was successful
+ */
+async function sendEmailNotification(subject, results, success = true) {
+    if (!emailTransporter) {
+        console.log('Email notifications disabled, skipping...');
+        return;
+    }
+    
+    try {
+        let html = `
+            <h2>${subject}</h2>
+            <p><strong>Status:</strong> ${success ? '✅ SUCCESS' : '❌ FAILED'}</p>
+            <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+            <hr>
+        `;
+        
+        if (success) {
+            html += `
+                <h3>Summary</h3>
+                <ul>
+                    <li><strong>Total Clubs:</strong> ${results.totalClubs || 'N/A'}</li>
+                    <li><strong>Total Members/Services:</strong> ${results.totalMembers || results.totalServices || 0}</li>
+                    <li><strong>Created:</strong> ${results.created || 0}</li>
+                    <li><strong>Updated:</strong> ${results.updated || 0}</li>
+                    <li><strong>Tagged:</strong> ${results.tagged || 0}</li>
+                    <li><strong>Already Tagged:</strong> ${results.alreadyTagged || 0}</li>
+                    <li><strong>Skipped:</strong> ${results.skipped || 0}</li>
+                    <li><strong>Not Found:</strong> ${results.notFound || 0}</li>
+                    <li><strong>Errors:</strong> ${results.errors || 0}</li>
+                </ul>
+                
+                <h3>Per-Club Results</h3>
+            `;
+            
+            if (results.clubs && results.clubs.length > 0) {
+                results.clubs.forEach(club => {
+                    html += `
+                        <h4>${club.clubName} (${club.clubNumber})</h4>
+                        <ul>
+                            <li>Members/Services: ${club.members || club.totalMembers || club.totalServices || 0}</li>
+                            <li>Created: ${club.created || 0}</li>
+                            <li>Updated: ${club.updated || 0}</li>
+                            <li>Tagged: ${club.tagged || 0}</li>
+                            <li>Errors: ${club.errors || (Array.isArray(club.errors) ? club.errors.length : 0)}</li>
+                        </ul>
+                    `;
+                });
+            }
+            
+            if (results.dateRange) {
+                html += `<p><strong>Date Range:</strong> ${results.dateRange}</p>`;
+            }
+            
+        } else {
+            html += `
+                <h3>Error Details</h3>
+                <p>${results.error || 'Unknown error occurred'}</p>
+                <pre>${JSON.stringify(results, null, 2)}</pre>
+            `;
+        }
+        
+        await emailTransporter.sendMail({
+            from: `"WCS Sync Server" <${EMAIL_USER}>`,
+            to: NOTIFICATION_EMAIL,
+            subject: subject,
+            html: html
+        });
+        
+        console.log(`📧 Email notification sent to ${NOTIFICATION_EMAIL}`);
+        
+    } catch (error) {
+        console.error('Failed to send email notification:', error.message);
+    }
+}
+
 // ====================================
 // UTILITY FUNCTIONS
 // ====================================
