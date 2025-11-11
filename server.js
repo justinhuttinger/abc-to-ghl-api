@@ -203,7 +203,7 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
 }
 
 /**
- * Fetch active members who are exactly 1 day past due
+ * Fetch active members who are exactly 3 days past due
  * @param {string} clubNumber - The club number
  * @returns {Promise<Array>} Array of past due members
  */
@@ -276,7 +276,7 @@ async function fetchOneDayPastDueMembers(clubNumber) {
         
         console.log(`\n=== PAST DUE ANALYSIS ===`);
         console.log(`Today's date: ${today.toISOString().split('T')[0]}`);
-        console.log(`Looking for nextBillingDate: ${new Date(today - 24*60*60*1000).toISOString().split('T')[0]} (yesterday)`);
+        console.log(`Looking for nextBillingDate: ${new Date(today - 3*24*60*60*1000).toISOString().split('T')[0]} (3 days ago)`);
         
         // First, let's see ALL members with past billing dates (for debugging)
         const membersWithPastBillingDates = allMembers.filter(member => {
@@ -307,8 +307,8 @@ async function fetchOneDayPastDueMembers(clubNumber) {
             });
         }
         
-        // Now filter for exactly 1 day past due
-        const oneDayPastDue = allMembers.filter(member => {
+        // Now filter for exactly 3 days past due
+        const threeDaysPastDue = allMembers.filter(member => {
             const nextBillingDate = member.agreement?.nextBillingDate;
             if (!nextBillingDate) return false;
             
@@ -318,15 +318,15 @@ async function fetchOneDayPastDueMembers(clubNumber) {
             // Calculate days past due
             const daysDiff = Math.floor((today - billingDate) / (1000 * 60 * 60 * 24));
             
-            return daysDiff === 1;
+            return daysDiff === 3;
         });
         
-        console.log(`\n✅ Found ${oneDayPastDue.length} members exactly 1 day past due`);
+        console.log(`\n✅ Found ${threeDaysPastDue.length} members exactly 3 days past due`);
         
-        // Show sample of 1-day past due members
-        if (oneDayPastDue.length > 0) {
+        // Show sample of 3-days past due members
+        if (threeDaysPastDue.length > 0) {
             console.log(`\nSample members (first 3):`);
-            oneDayPastDue.slice(0, 3).forEach((member, i) => {
+            threeDaysPastDue.slice(0, 3).forEach((member, i) => {
                 console.log(`  ${i + 1}. ${member.personal?.firstName} ${member.personal?.lastName}`);
                 console.log(`     Email: ${member.personal?.email}`);
                 console.log(`     Next Billing Date: ${member.agreement?.nextBillingDate}`);
@@ -335,7 +335,7 @@ async function fetchOneDayPastDueMembers(clubNumber) {
             });
         }
         
-        return oneDayPastDue;
+        return threeDaysPastDue;
         
     } catch (error) {
         console.error('Error fetching past due members from ABC:', error.message);
