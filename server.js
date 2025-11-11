@@ -125,15 +125,17 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             html += '<h2>1️⃣ New Members Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
-                const r = sync.results;
-                html += '<ul>';
-                html += '<li><strong>Total Clubs:</strong> ' + r.totalClubs + '</li>';
-                html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
-                html += '<li><strong>Created:</strong> ' + r.created + '</li>';
-                html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
-                html += '<li><strong>Skipped:</strong> ' + r.skipped + '</li>';
-                html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
-                html += '</ul>';
+    const r = sync.results;
+    html += '<ul>';
+    html += '<li><strong>Date Range:</strong> ' + r.dateRange + '</li>';  // ← ADD THIS LINE
+    html += '<li><strong>Total Clubs:</strong> ' + r.totalClubs + '</li>';
+    html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
+    html += '<li><strong>Created:</strong> ' + r.created + '</li>';
+    html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
+    html += '<li><strong>Skipped:</strong> ' + r.skipped + '</li>';
+    html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
+    html += '</ul>';
+}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -145,15 +147,17 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             html += '<h2>2️⃣ Cancelled Members Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
-                const r = sync.results;
-                html += '<ul>';
-                html += '<li><strong>Total Clubs:</strong> ' + r.totalClubs + '</li>';
-                html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
-                html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
-                html += '<li><strong>Already Tagged:</strong> ' + r.alreadyTagged + '</li>';
-                html += '<li><strong>Not Found:</strong> ' + r.notFound + '</li>';
-                html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
-                html += '</ul>';
+    const r = sync.results;
+    html += '<ul>';
+    html += '<li><strong>Date Range:</strong> ' + r.dateRange + '</li>';  // ← ADD THIS LINE
+    html += '<li><strong>Total Clubs:</strong> ' + r.totalClubs + '</li>';
+    html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
+    html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
+    html += '<li><strong>Already Tagged:</strong> ' + r.alreadyTagged + '</li>';
+    html += '<li><strong>Not Found:</strong> ' + r.notFound + '</li>';
+    html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
+    html += '</ul>';
+}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -164,12 +168,14 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             const sync = masterResults.syncs.pastDueMembers;
             html += '<h2>3️⃣ Past Due Members Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
-            if (sync.success) {
-                const r = sync.results;
-                html += '<ul>';
-                html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
-                html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
-                html += '</ul>';
+           if (sync.success) {
+    const r = sync.results;
+    html += '<ul>';
+    html += '<li><strong>Days Past Due:</strong> 3</li>';  // ← ADD THIS LINE
+    html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
+    html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
+    html += '</ul>';
+}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -180,13 +186,15 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             const sync = masterResults.syncs.newPTServices;
             html += '<h2>4️⃣ New PT Services Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
-            if (sync.success) {
-                const r = sync.results;
-                html += '<ul>';
-                html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
-                html += '<li><strong>Created:</strong> ' + r.created + '</li>';
-                html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
-                html += '</ul>';
+           if (sync.success) {
+    const r = sync.results;
+    html += '<ul>';
+    html += '<li><strong>Date Range:</strong> ' + r.dateRange + '</li>';  // ← ADD THIS LINE
+    html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
+    html += '<li><strong>Created:</strong> ' + r.created + '</li>';
+    html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
+    html += '</ul>';
+}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -198,11 +206,13 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             html += '<h2>5️⃣ Deactivated PT Services Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
-                const r = sync.results;
-                html += '<ul>';
-                html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
-                html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
-                html += '</ul>';
+    const r = sync.results;
+    html += '<ul>';
+    html += '<li><strong>Date Range:</strong> ' + r.dateRange + '</li>';  // ← ADD THIS LINE
+    html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
+    html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
+    html += '</ul>';
+}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
