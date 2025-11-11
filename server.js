@@ -1227,20 +1227,21 @@ app.post('/api/sync', async (req, res) => {
 });
 
 // Sync specific club (simplified endpoint)
-// Sync cancelled members - automatically syncs members who cancelled yesterday
+// Sync cancelled members - automatically syncs members who cancelled yesterday - ALL CLUBS
 app.post('/api/sync-cancelled', async (req, res) => {
-    let { clubNumber, startDate, endDate } = req.body;
+    let { startDate, endDate } = req.body;
     
     // Validate configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY || !GHL_LOCATION_ID) {
+    if (!ABC_APP_ID || !ABC_APP_KEY) {
         return res.status(500).json({
-            error: 'API keys not configured'
+            error: 'ABC API keys not configured'
         });
     }
     
-    // Default club if not specified
-    if (!clubNumber) {
-        clubNumber = '30935';
+    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
+        return res.status(500).json({
+            error: 'No clubs configured in clubs-config.json'
+        });
     }
     
     // Calculate yesterday if no dates provided
@@ -1253,64 +1254,100 @@ app.post('/api/sync-cancelled', async (req, res) => {
     }
     
     try {
-        console.log(`\n=== Syncing Cancelled Members ===`);
+        console.log(`\n🏢 Processing cancelled members for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
         
         const results = {
             type: 'cancelled_members',
-            clubNumber: clubNumber,
+            totalClubs: 0,
             dateRange: `${startDate} to ${endDate}`,
             totalMembers: 0,
             tagged: 0,
             alreadyTagged: 0,
             notFound: 0,
             errors: 0,
-            members: []
+            clubs: []
         };
         
-        // Fetch cancelled members
-        const members = await fetchCancelledMembersFromABC(clubNumber, startDate, endDate);
-        results.totalMembers = members.length;
+        // Process each enabled club
+        const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
+        results.totalClubs = enabledClubs.length;
         
-        console.log(`Found ${members.length} cancelled members`);
-        
-        // Tag each cancelled member in GHL
-        for (const member of members) {
+        for (const club of enabledClubs) {
+            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            
+            const clubResult = {
+                clubNumber: club.clubNumber,
+                clubName: club.clubName,
+                totalMembers: 0,
+                tagged: 0,
+                alreadyTagged: 0,
+                notFound: 0,
+                errors: 0,
+                members: []
+            };
+            
             try {
-                const personal = member.personal || {};
-                const email = personal.email;
+                // Fetch cancelled members
+                const members = await fetchCancelledMembersFromABC(club.clubNumber, startDate, endDate);
+                clubResult.totalMembers = members.length;
+                results.totalMembers += members.length;
                 
-                if (!email) {
-                    console.log(`⚠️ Skipping member without email: ${member.memberId}`);
-                    results.notFound++;
-                    continue;
+                console.log(`Found ${members.length} cancelled members`);
+                
+                // Tag each cancelled member in GHL using club-specific credentials
+                for (const member of members) {
+                    try {
+                        const personal = member.personal || {};
+                        const email = personal.email;
+                        
+                        if (!email) {
+                            console.log(`⚠️ Skipping member without email: ${member.memberId}`);
+                            clubResult.notFound++;
+                            results.notFound++;
+                            continue;
+                        }
+                        
+                        // Add 'cancelled / past member' tag with club-specific credentials
+                        const result = await addTagToContact(email, club.ghlApiKey, club.ghlLocationId, 'cancelled / past member');
+                        
+                        if (result.action === 'tagged') {
+                            clubResult.tagged++;
+                            results.tagged++;
+                        } else if (result.action === 'already_tagged') {
+                            clubResult.alreadyTagged++;
+                            results.alreadyTagged++;
+                        } else if (result.action === 'not_found') {
+                            clubResult.notFound++;
+                            results.notFound++;
+                        }
+                        
+                        clubResult.members.push({
+                            email: email,
+                            name: `${personal.firstName} ${personal.lastName}`,
+                            cancelDate: personal.memberStatusDate,
+                            cancelReason: personal.memberStatusReason,
+                            action: result.action
+                        });
+                        
+                    } catch (memberError) {
+                        clubResult.errors++;
+                        results.errors++;
+                        console.error(`Error processing member: ${memberError.message}`);
+                    }
                 }
                 
-                // Add 'cancelled / past member' tag
-                const result = await addTagToContact(email, 'cancelled / past member');
-                
-                if (result.action === 'tagged') {
-                    results.tagged++;
-                } else if (result.action === 'already_tagged') {
-                    results.alreadyTagged++;
-                } else if (result.action === 'not_found') {
-                    results.notFound++;
-                }
-                
-                results.members.push({
-                    email: email,
-                    name: `${personal.firstName} ${personal.lastName}`,
-                    cancelDate: personal.memberStatusDate,
-                    cancelReason: personal.memberStatusReason,
-                    action: result.action
-                });
-                
-            } catch (memberError) {
+            } catch (clubError) {
+                clubResult.errors++;
                 results.errors++;
-                console.error(`Error processing member: ${memberError.message}`);
+                console.error(`Error processing club ${club.clubName}:`, clubError.message);
             }
+            
+            results.clubs.push(clubResult);
         }
         
-        console.log(`\n=== Cancelled Members Sync Complete ===`);
+        console.log(`\n=== ALL CLUBS - Cancelled Members Sync Complete ===`);
+        console.log(`Total Clubs: ${results.totalClubs}`);
+        console.log(`Total Members: ${results.totalMembers}`);
         console.log(`Tagged: ${results.tagged}`);
         console.log(`Already Tagged: ${results.alreadyTagged}`);
         console.log(`Not Found: ${results.notFound}`);
@@ -1318,7 +1355,7 @@ app.post('/api/sync-cancelled', async (req, res) => {
         
         res.json({
             success: true,
-            message: 'Cancelled members sync completed',
+            message: 'Multi-club cancelled members sync completed',
             results: results,
             timestamp: new Date().toISOString()
         });
@@ -1332,82 +1369,117 @@ app.post('/api/sync-cancelled', async (req, res) => {
     }
 });
 
-// Sync past due members - sync active members exactly 1 day past due
+// Sync past due members - sync active members exactly 3 days past due - ALL CLUBS
 app.post('/api/sync-past-due', async (req, res) => {
-    let { clubNumber } = req.body;
-    
     // Validate configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY || !GHL_LOCATION_ID) {
+    if (!ABC_APP_ID || !ABC_APP_KEY) {
         return res.status(500).json({
-            error: 'API keys not configured'
+            error: 'ABC API keys not configured'
         });
     }
     
-    // Default club if not specified
-    if (!clubNumber) {
-        clubNumber = '30935';
+    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
+        return res.status(500).json({
+            error: 'No clubs configured in clubs-config.json'
+        });
     }
     
     try {
-        console.log(`\n=== Syncing Past Due Members (1 Day) ===`);
+        console.log(`\n🏢 Processing past due members for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
         
         const results = {
             type: 'past_due_members',
-            clubNumber: clubNumber,
-            daysPastDue: 1,
+            totalClubs: 0,
+            daysPastDue: 3,
             totalMembers: 0,
             tagged: 0,
             alreadyTagged: 0,
             notFound: 0,
             errors: 0,
-            members: []
+            clubs: []
         };
         
-        // Fetch members exactly 1 day past due
-        const members = await fetchOneDayPastDueMembers(clubNumber);
-        results.totalMembers = members.length;
+        // Process each enabled club
+        const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
+        results.totalClubs = enabledClubs.length;
         
-        console.log(`Found ${members.length} members 1 day past due`);
-        
-        // Tag each past due member in GHL
-        for (const member of members) {
+        for (const club of enabledClubs) {
+            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            
+            const clubResult = {
+                clubNumber: club.clubNumber,
+                clubName: club.clubName,
+                totalMembers: 0,
+                tagged: 0,
+                alreadyTagged: 0,
+                notFound: 0,
+                errors: 0,
+                members: []
+            };
+            
             try {
-                const personal = member.personal || {};
-                const agreement = member.agreement || {};
-                const email = personal.email;
+                // Fetch members exactly 3 days past due
+                const members = await fetchOneDayPastDueMembers(club.clubNumber);
+                clubResult.totalMembers = members.length;
+                results.totalMembers += members.length;
                 
-                if (!email) {
-                    console.log(`⚠️ Skipping member without email: ${member.memberId}`);
-                    results.notFound++;
-                    continue;
+                console.log(`Found ${members.length} members 3 days past due`);
+                
+                // Tag each past due member in GHL using club-specific credentials
+                for (const member of members) {
+                    try {
+                        const personal = member.personal || {};
+                        const agreement = member.agreement || {};
+                        const email = personal.email;
+                        
+                        if (!email) {
+                            console.log(`⚠️ Skipping member without email: ${member.memberId}`);
+                            clubResult.notFound++;
+                            results.notFound++;
+                            continue;
+                        }
+                        
+                        // Add 'past due' tag with club-specific credentials
+                        const result = await addTagToContact(email, club.ghlApiKey, club.ghlLocationId, 'past due');
+                        
+                        if (result.action === 'tagged') {
+                            clubResult.tagged++;
+                            results.tagged++;
+                        } else if (result.action === 'already_tagged') {
+                            clubResult.alreadyTagged++;
+                            results.alreadyTagged++;
+                        } else if (result.action === 'not_found') {
+                            clubResult.notFound++;
+                            results.notFound++;
+                        }
+                        
+                        clubResult.members.push({
+                            email: email,
+                            name: `${personal.firstName} ${personal.lastName}`,
+                            nextBillingDate: agreement.nextBillingDate,
+                            pastDueBalance: agreement.pastDueBalance,
+                            action: result.action
+                        });
+                        
+                    } catch (memberError) {
+                        clubResult.errors++;
+                        results.errors++;
+                        console.error(`Error processing member: ${memberError.message}`);
+                    }
                 }
                 
-                // Add 'past due' tag
-                const result = await addTagToContact(email, 'past due');
-                
-                if (result.action === 'tagged') {
-                    results.tagged++;
-                } else if (result.action === 'already_tagged') {
-                    results.alreadyTagged++;
-                } else if (result.action === 'not_found') {
-                    results.notFound++;
-                }
-                
-                results.members.push({
-                    email: email,
-                    name: `${personal.firstName} ${personal.lastName}`,
-                    nextBillingDate: agreement.nextBillingDate,
-                    pastDueBalance: agreement.pastDueBalance,
-                    action: result.action
-                });
-                
-            } catch (memberError) {
+            } catch (clubError) {
+                clubResult.errors++;
                 results.errors++;
-                console.error(`Error processing member: ${memberError.message}`);
+                console.error(`Error processing club ${club.clubName}:`, clubError.message);
             }
+            
+            results.clubs.push(clubResult);
         }
         
-        console.log(`\n=== Past Due Members Sync Complete ===`);
+        console.log(`\n=== ALL CLUBS - Past Due Members Sync Complete ===`);
+        console.log(`Total Clubs: ${results.totalClubs}`);
+        console.log(`Total Members: ${results.totalMembers}`);
         console.log(`Tagged: ${results.tagged}`);
         console.log(`Already Tagged: ${results.alreadyTagged}`);
         console.log(`Not Found: ${results.notFound}`);
@@ -1415,7 +1487,7 @@ app.post('/api/sync-past-due', async (req, res) => {
         
         res.json({
             success: true,
-            message: 'Past due members sync completed',
+            message: 'Multi-club past due members sync completed',
             results: results,
             timestamp: new Date().toISOString()
         });
@@ -1429,20 +1501,21 @@ app.post('/api/sync-past-due', async (req, res) => {
     }
 });
 
-// Sync new PT services - automatically syncs PT services sold yesterday
+// Sync new PT services - automatically syncs PT services sold yesterday - ALL CLUBS
 app.post('/api/sync-pt-new', async (req, res) => {
-    let { clubNumber, startDate, endDate } = req.body;
+    let { startDate, endDate } = req.body;
     
     // Validate configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY || !GHL_LOCATION_ID) {
+    if (!ABC_APP_ID || !ABC_APP_KEY) {
         return res.status(500).json({
-            error: 'API keys not configured'
+            error: 'ABC API keys not configured'
         });
     }
     
-    // Default club if not specified
-    if (!clubNumber) {
-        clubNumber = '30935';
+    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
+        return res.status(500).json({
+            error: 'No clubs configured in clubs-config.json'
+        });
     }
     
     // Calculate yesterday if no dates provided
@@ -1455,91 +1528,127 @@ app.post('/api/sync-pt-new', async (req, res) => {
     }
     
     try {
-        console.log(`\n=== Syncing New PT Services ===`);
+        console.log(`\n🏢 Processing new PT services for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
         
         const results = {
             type: 'new_pt_services',
-            clubNumber: clubNumber,
+            totalClubs: 0,
             dateRange: `${startDate} to ${endDate}`,
             totalServices: 0,
             created: 0,
             updated: 0,
             tagged: 0,
             errors: 0,
-            services: []
+            clubs: []
         };
         
-        // Fetch new recurring services (sold yesterday)
-        const services = await fetchRecurringServicesFromABC(clubNumber, startDate, endDate, 'Active', 'sale');
-        results.totalServices = services.length;
+        // Process each enabled club
+        const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
+        results.totalClubs = enabledClubs.length;
         
-        console.log(`Found ${services.length} new PT services`);
-        
-        // Fetch member details from ABC and create/update in GHL
-        for (const service of services) {
+        for (const club of enabledClubs) {
+            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            
+            const clubResult = {
+                clubNumber: club.clubNumber,
+                clubName: club.clubName,
+                totalServices: 0,
+                created: 0,
+                updated: 0,
+                tagged: 0,
+                errors: 0,
+                services: []
+            };
+            
             try {
-                console.log(`\n━━━ Processing PT Service ━━━`);
-                console.log(`Service: ${service.serviceItem}`);
-                console.log(`Member: ${service.memberFirstName} ${service.memberLastName}`);
-                console.log(`MemberId: ${service.memberId}`);
-                console.log(`Sale Date: ${service.recurringServiceDates?.saleDate}`);
+                // Fetch new recurring services (sold in date range)
+                const services = await fetchRecurringServicesFromABC(club.clubNumber, startDate, endDate, 'Active', 'sale');
+                clubResult.totalServices = services.length;
+                results.totalServices += services.length;
                 
-                // Fetch full member details from ABC
-                const member = await fetchMemberByIdFromABC(clubNumber, service.memberId);
+                console.log(`Found ${services.length} new PT services`);
                 
-                if (!member || !member.personal?.email) {
-                    console.log(`⚠️ Member has no email, skipping`);
-                    results.errors++;
-                    results.services.push({
-                        memberId: service.memberId,
-                        memberName: `${service.memberFirstName} ${service.memberLastName}`,
-                        serviceItem: service.serviceItem,
-                        saleDate: service.recurringServiceDates?.saleDate,
-                        action: 'no_email'
-                    });
-                    continue;
+                // Fetch member details from ABC and create/update in GHL
+                for (const service of services) {
+                    try {
+                        console.log(`\n━━━ Processing PT Service ━━━`);
+                        console.log(`Service: ${service.serviceItem}`);
+                        console.log(`Member: ${service.memberFirstName} ${service.memberLastName}`);
+                        console.log(`MemberId: ${service.memberId}`);
+                        console.log(`Sale Date: ${service.recurringServiceDates?.saleDate}`);
+                        
+                        // Fetch full member details from ABC
+                        const member = await fetchMemberByIdFromABC(club.clubNumber, service.memberId);
+                        
+                        if (!member || !member.personal?.email) {
+                            console.log(`⚠️ Member has no email, skipping`);
+                            clubResult.errors++;
+                            results.errors++;
+                            clubResult.services.push({
+                                memberId: service.memberId,
+                                memberName: `${service.memberFirstName} ${service.memberLastName}`,
+                                serviceItem: service.serviceItem,
+                                saleDate: service.recurringServiceDates?.saleDate,
+                                action: 'no_email'
+                            });
+                            continue;
+                        }
+                        
+                        console.log(`Creating/updating contact in GHL...`);
+                        
+                        // Build service employee full name
+                        const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
+                        console.log(`Service Employee: ${serviceEmployee}`);
+                        
+                        // Create/update contact in GHL with 'pt current' tag and service employee using club-specific credentials
+                        const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, 'pt current', serviceEmployee || null);
+                        
+                        if (result.action === 'created') {
+                            clubResult.created++;
+                            results.created++;
+                        } else if (result.action === 'updated') {
+                            clubResult.updated++;
+                            results.updated++;
+                        }
+                        clubResult.tagged++;
+                        results.tagged++;
+                        
+                        clubResult.services.push({
+                            memberId: service.memberId,
+                            memberName: `${member.personal.firstName} ${member.personal.lastName}`,
+                            email: member.personal.email,
+                            serviceItem: service.serviceItem,
+                            saleDate: service.recurringServiceDates?.saleDate,
+                            salesPerson: `${service.salesPersonFirstName} ${service.salesPersonLastName}`,
+                            action: result.action
+                        });
+                        
+                        console.log(`✅ Completed: ${result.action}`);
+                        
+                    } catch (serviceError) {
+                        clubResult.errors++;
+                        results.errors++;
+                        console.error(`❌ Error: ${serviceError.message}`);
+                        clubResult.services.push({
+                            memberId: service.memberId,
+                            memberName: `${service.memberFirstName} ${service.memberLastName}`,
+                            error: serviceError.message
+                        });
+                    }
                 }
                 
-                console.log(`Creating/updating contact in GHL...`);
-                
-                // Build service employee full name
-                const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
-                console.log(`Service Employee: ${serviceEmployee}`);
-                
-                // Create/update contact in GHL with 'pt current' tag and service employee
-                const result = await syncContactToGHL(member, 'pt current', serviceEmployee || null);
-                
-                if (result.action === 'created') {
-                    results.created++;
-                } else if (result.action === 'updated') {
-                    results.updated++;
-                }
-                results.tagged++;
-                
-                results.services.push({
-                    memberId: service.memberId,
-                    memberName: `${member.personal.firstName} ${member.personal.lastName}`,
-                    email: member.personal.email,
-                    serviceItem: service.serviceItem,
-                    saleDate: service.recurringServiceDates?.saleDate,
-                    salesPerson: `${service.salesPersonFirstName} ${service.salesPersonLastName}`,
-                    action: result.action
-                });
-                
-                console.log(`✅ Completed: ${result.action}`);
-                
-            } catch (serviceError) {
+            } catch (clubError) {
+                clubResult.errors++;
                 results.errors++;
-                console.error(`❌ Error: ${serviceError.message}`);
-                results.services.push({
-                    memberId: service.memberId,
-                    memberName: `${service.memberFirstName} ${service.memberLastName}`,
-                    error: serviceError.message
-                });
+                console.error(`Error processing club ${club.clubName}:`, clubError.message);
             }
+            
+            results.clubs.push(clubResult);
         }
         
-        console.log(`\n=== New PT Services Sync Complete ===`);
+        console.log(`\n=== ALL CLUBS - New PT Services Sync Complete ===`);
+        console.log(`Total Clubs: ${results.totalClubs}`);
+        console.log(`Total Services: ${results.totalServices}`);
         console.log(`Created: ${results.created}`);
         console.log(`Updated: ${results.updated}`);
         console.log(`Tagged: ${results.tagged}`);
@@ -1547,7 +1656,7 @@ app.post('/api/sync-pt-new', async (req, res) => {
         
         res.json({
             success: true,
-            message: 'New PT services sync completed',
+            message: 'Multi-club new PT services sync completed',
             results: results,
             timestamp: new Date().toISOString()
         });
@@ -1561,20 +1670,21 @@ app.post('/api/sync-pt-new', async (req, res) => {
     }
 });
 
-// Sync deactivated PT services - automatically syncs PT services deactivated yesterday
+// Sync deactivated PT services - automatically syncs PT services deactivated yesterday - ALL CLUBS
 app.post('/api/sync-pt-deactivated', async (req, res) => {
-    let { clubNumber, startDate, endDate } = req.body;
+    let { startDate, endDate } = req.body;
     
     // Validate configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY || !GHL_LOCATION_ID) {
+    if (!ABC_APP_ID || !ABC_APP_KEY) {
         return res.status(500).json({
-            error: 'API keys not configured'
+            error: 'ABC API keys not configured'
         });
     }
     
-    // Default club if not specified
-    if (!clubNumber) {
-        clubNumber = '30935';
+    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
+        return res.status(500).json({
+            error: 'No clubs configured in clubs-config.json'
+        });
     }
     
     // Calculate yesterday if no dates provided
@@ -1587,101 +1697,137 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
     }
     
     try {
-        console.log(`\n=== Syncing Deactivated PT Services ===`);
+        console.log(`\n🏢 Processing deactivated PT services for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
         
         const results = {
             type: 'deactivated_pt_services',
-            clubNumber: clubNumber,
+            totalClubs: 0,
             dateRange: `${startDate} to ${endDate}`,
             totalServices: 0,
             created: 0,
             updated: 0,
             tagged: 0,
             errors: 0,
-            services: []
+            clubs: []
         };
         
-        // Fetch deactivated recurring services
-        const services = await fetchRecurringServicesFromABC(clubNumber, startDate, endDate, 'Inactive', 'inactive');
+        // Process each enabled club
+        const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
+        results.totalClubs = enabledClubs.length;
         
-        // Filter to only those deactivated in date range
-        const deactivatedServices = services.filter(service => {
-            const inactiveDate = service.recurringServiceDates?.inactiveDate;
-            if (!inactiveDate) return false;
+        for (const club of enabledClubs) {
+            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
             
-            const date = inactiveDate.split('T')[0];
-            return date >= startDate && date <= endDate;
-        });
-        
-        results.totalServices = deactivatedServices.length;
-        
-        console.log(`Found ${deactivatedServices.length} deactivated PT services`);
-        
-        // Fetch member details from ABC and create/update in GHL
-        for (const service of deactivatedServices) {
+            const clubResult = {
+                clubNumber: club.clubNumber,
+                clubName: club.clubName,
+                totalServices: 0,
+                created: 0,
+                updated: 0,
+                tagged: 0,
+                errors: 0,
+                services: []
+            };
+            
             try {
-                console.log(`\n━━━ Processing Deactivated PT Service ━━━`);
-                console.log(`Service: ${service.serviceItem}`);
-                console.log(`Member: ${service.memberFirstName} ${service.memberLastName}`);
-                console.log(`MemberId: ${service.memberId}`);
-                console.log(`Inactive Date: ${service.recurringServiceDates?.inactiveDate}`);
+                // Fetch deactivated recurring services
+                const services = await fetchRecurringServicesFromABC(club.clubNumber, startDate, endDate, 'Inactive', 'inactive');
                 
-                // Fetch full member details from ABC
-                const member = await fetchMemberByIdFromABC(clubNumber, service.memberId);
-                
-                if (!member || !member.personal?.email) {
-                    console.log(`⚠️ Member has no email, skipping`);
-                    results.errors++;
-                    results.services.push({
-                        memberId: service.memberId,
-                        memberName: `${service.memberFirstName} ${service.memberLastName}`,
-                        serviceItem: service.serviceItem,
-                        inactiveDate: service.recurringServiceDates?.inactiveDate,
-                        action: 'no_email'
-                    });
-                    continue;
-                }
-                
-                console.log(`Creating/updating contact in GHL...`);
-                
-                // Build service employee full name
-                const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
-                console.log(`Service Employee: ${serviceEmployee}`);
-                
-                // Create/update contact in GHL with 'ex pt' tag and service employee
-                const result = await syncContactToGHL(member, 'ex pt', serviceEmployee || null);
-                
-                if (result.action === 'created') {
-                    results.created++;
-                } else if (result.action === 'updated') {
-                    results.updated++;
-                }
-                results.tagged++;
-                
-                results.services.push({
-                    memberId: service.memberId,
-                    memberName: `${member.personal.firstName} ${member.personal.lastName}`,
-                    email: member.personal.email,
-                    serviceItem: service.serviceItem,
-                    inactiveDate: service.recurringServiceDates?.inactiveDate,
-                    deactivateReason: service.recurringServiceDates?.deactivateReason,
-                    action: result.action
+                // Filter to only those deactivated in date range
+                const deactivatedServices = services.filter(service => {
+                    const inactiveDate = service.recurringServiceDates?.inactiveDate;
+                    if (!inactiveDate) return false;
+                    
+                    const date = inactiveDate.split('T')[0];
+                    return date >= startDate && date <= endDate;
                 });
                 
-                console.log(`✅ Completed: ${result.action}`);
+                clubResult.totalServices = deactivatedServices.length;
+                results.totalServices += deactivatedServices.length;
                 
-            } catch (serviceError) {
+                console.log(`Found ${deactivatedServices.length} deactivated PT services`);
+                
+                // Fetch member details from ABC and create/update in GHL
+                for (const service of deactivatedServices) {
+                    try {
+                        console.log(`\n━━━ Processing Deactivated PT Service ━━━`);
+                        console.log(`Service: ${service.serviceItem}`);
+                        console.log(`Member: ${service.memberFirstName} ${service.memberLastName}`);
+                        console.log(`MemberId: ${service.memberId}`);
+                        console.log(`Inactive Date: ${service.recurringServiceDates?.inactiveDate}`);
+                        
+                        // Fetch full member details from ABC
+                        const member = await fetchMemberByIdFromABC(club.clubNumber, service.memberId);
+                        
+                        if (!member || !member.personal?.email) {
+                            console.log(`⚠️ Member has no email, skipping`);
+                            clubResult.errors++;
+                            results.errors++;
+                            clubResult.services.push({
+                                memberId: service.memberId,
+                                memberName: `${service.memberFirstName} ${service.memberLastName}`,
+                                serviceItem: service.serviceItem,
+                                inactiveDate: service.recurringServiceDates?.inactiveDate,
+                                action: 'no_email'
+                            });
+                            continue;
+                        }
+                        
+                        console.log(`Creating/updating contact in GHL...`);
+                        
+                        // Build service employee full name
+                        const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
+                        console.log(`Service Employee: ${serviceEmployee}`);
+                        
+                        // Create/update contact in GHL with 'ex pt' tag and service employee using club-specific credentials
+                        const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, 'ex pt', serviceEmployee || null);
+                        
+                        if (result.action === 'created') {
+                            clubResult.created++;
+                            results.created++;
+                        } else if (result.action === 'updated') {
+                            clubResult.updated++;
+                            results.updated++;
+                        }
+                        clubResult.tagged++;
+                        results.tagged++;
+                        
+                        clubResult.services.push({
+                            memberId: service.memberId,
+                            memberName: `${member.personal.firstName} ${member.personal.lastName}`,
+                            email: member.personal.email,
+                            serviceItem: service.serviceItem,
+                            inactiveDate: service.recurringServiceDates?.inactiveDate,
+                            deactivateReason: service.recurringServiceDates?.deactivateReason,
+                            action: result.action
+                        });
+                        
+                        console.log(`✅ Completed: ${result.action}`);
+                        
+                    } catch (serviceError) {
+                        clubResult.errors++;
+                        results.errors++;
+                        console.error(`❌ Error: ${serviceError.message}`);
+                        clubResult.services.push({
+                            memberId: service.memberId,
+                            memberName: `${service.memberFirstName} ${service.memberLastName}`,
+                            error: serviceError.message
+                        });
+                    }
+                }
+                
+            } catch (clubError) {
+                clubResult.errors++;
                 results.errors++;
-                console.error(`❌ Error: ${serviceError.message}`);
-                results.services.push({
-                    memberId: service.memberId,
-                    memberName: `${service.memberFirstName} ${service.memberLastName}`,
-                    error: serviceError.message
-                });
+                console.error(`Error processing club ${club.clubName}:`, clubError.message);
             }
+            
+            results.clubs.push(clubResult);
         }
         
-        console.log(`\n=== Deactivated PT Services Sync Complete ===`);
+        console.log(`\n=== ALL CLUBS - Deactivated PT Services Sync Complete ===`);
+        console.log(`Total Clubs: ${results.totalClubs}`);
+        console.log(`Total Services: ${results.totalServices}`);
         console.log(`Created: ${results.created}`);
         console.log(`Updated: ${results.updated}`);
         console.log(`Tagged: ${results.tagged}`);
@@ -1689,7 +1835,7 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
         
         res.json({
             success: true,
-            message: 'Deactivated PT services sync completed',
+            message: 'Multi-club deactivated PT services sync completed',
             results: results,
             timestamp: new Date().toISOString()
         });
