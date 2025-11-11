@@ -98,12 +98,12 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
     try {
         const url = `${ABC_API_URL}/${clubNumber}/members`;
         
-        // ABC's date filters don't work - fetch ALL members with large size
+        // Fetch with size parameter - ABC supports up to 5000
         const params = {
-            size: 10000  // Increase size to get all members
+            size: 5000  // ABC API max is around 5000
         };
         
-        console.log(`Fetching all members from ABC club ${clubNumber} (size: 10000)`);
+        console.log(`Fetching all members from ABC club ${clubNumber} (size: 5000)`);
         
         const response = await axios.get(url, {
             headers: {
@@ -123,12 +123,14 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
         });
         console.log(`Filtered to ${members.length} actual members (excluding prospects)`);
         
-        // Filter for inactive members (isActive === "false")
+        // Filter for inactive members (isActive can be boolean false or string "false")
         members = members.filter(member => {
-            return member.personal?.isActive === 'false';
+            const isActive = member.personal?.isActive;
+            // Check for boolean false or string "false"
+            return isActive === false || isActive === 'false';
         });
         
-        console.log(`Filtered to ${members.length} inactive members (isActive: false)`);
+        console.log(`Filtered to ${members.length} inactive members`);
         
         // Filter by memberStatusDate if date range provided
         if (startDate && endDate) {
@@ -139,6 +141,7 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
                 if (!statusDate) return false;
                 
                 // Extract just the date part (YYYY-MM-DD)
+                // memberStatusDate format: "1997-08-13" or "1997-08-13T00:00:00"
                 const memberDate = statusDate.split('T')[0];
                 
                 // Check if date falls in range
