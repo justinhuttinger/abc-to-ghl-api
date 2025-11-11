@@ -40,7 +40,9 @@ if (EMAIL_USER && EMAIL_PASS) {
         }
     });
     console.log('✅ Email notifications enabled');
-```
+} else {
+    console.log('⚠️ Email notifications disabled (EMAIL_USER/EMAIL_PASS not configured)');
+}
 
 // Load clubs configuration
 let clubsConfig = { clubs: [] };
