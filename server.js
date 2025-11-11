@@ -1723,7 +1723,14 @@ app.listen(PORT, () => {
     console.log(`\n🔑 Configuration Status:`);
     console.log(`   ABC App ID: ${ABC_APP_ID ? '✅ Configured' : '❌ Not configured'}`);
     console.log(`   ABC App Key: ${ABC_APP_KEY ? '✅ Configured' : '❌ Not configured'}`);
-    console.log(`   GHL API Key: ${GHL_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
-    console.log(`   GHL Location ID: ${GHL_LOCATION_ID ? '✅ Configured' : '❌ Not configured'}`);
+    console.log(`   Clubs Loaded: ${clubsConfig.clubs.length} clubs`);
+    
+    // Show club summary
+    const enabledClubs = clubsConfig.clubs.filter(c => c.enabled !== false);
+    console.log(`   Enabled Clubs: ${enabledClubs.length}`);
+    enabledClubs.forEach(club => {
+        console.log(`      - ${club.clubName} (${club.clubNumber})`);
+    });
+    
     console.log(`\n📝 Ready to sync members!\n`);
 });
