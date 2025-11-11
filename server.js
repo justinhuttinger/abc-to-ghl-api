@@ -135,7 +135,6 @@ async function sendMasterSyncEmail(masterResults, success = true) {
     html += '<li><strong>Skipped:</strong> ' + r.skipped + '</li>';
     html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
     html += '</ul>';
-}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -157,7 +156,6 @@ async function sendMasterSyncEmail(masterResults, success = true) {
     html += '<li><strong>Not Found:</strong> ' + r.notFound + '</li>';
     html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
     html += '</ul>';
-}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -175,7 +173,6 @@ async function sendMasterSyncEmail(masterResults, success = true) {
     html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
     html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
     html += '</ul>';
-}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -194,7 +191,6 @@ async function sendMasterSyncEmail(masterResults, success = true) {
     html += '<li><strong>Created:</strong> ' + r.created + '</li>';
     html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
     html += '</ul>';
-}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -212,7 +208,6 @@ async function sendMasterSyncEmail(masterResults, success = true) {
     html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
     html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
     html += '</ul>';
-}
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
