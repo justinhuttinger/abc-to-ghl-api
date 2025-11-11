@@ -1,11 +1,12 @@
 const express = require('express');
 const axios = require('axios');
+const fs = require('fs');  // <-- Just add this ONE line
 const app = express();
-const PORT = process.env.PORT || 3000;
-const express = require('express');
-const axios = require('axios');
-const fs = require('fs'); // ADD THIS LINE
-const app = express();
+
+**Also, I notice** your server started on the third attempt and shows:
+```
+GHL API Key: ✅ Configured
+GHL Location ID: ✅ Configured
 
 // Middleware
 app.use(express.json());
@@ -15,10 +16,6 @@ const ABC_API_URL = process.env.ABC_API_URL || 'https://api.abcfinancial.com/res
 const ABC_APP_ID = process.env.ABC_APP_ID;
 const ABC_APP_KEY = process.env.ABC_APP_KEY;
 const GHL_API_URL = process.env.GHL_API_URL || 'https://services.leadconnectorhq.com';
-
-// REMOVE these two lines (no longer needed at global level):
-// const GHL_API_KEY = process.env.GHL_API_KEY;
-// const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
 
 // Load clubs configuration
 let clubsConfig = { clubs: [] };
