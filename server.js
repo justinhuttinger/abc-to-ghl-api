@@ -1959,6 +1959,138 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
     }
 });
 
+// Master sync endpoint - runs ALL syncs and sends one summary email
+app.post('/api/sync-all', async (req, res) => {
+    console.log('\n🚀 Starting Master Sync - All Endpoints');
+    
+    const masterResults = {
+        startTime: new Date().toISOString(),
+        endTime: null,
+        totalDuration: null,
+        syncs: {}
+    };
+    
+    try {
+        // 1. Sync new members (yesterday)
+        console.log('\n📝 [1/5] Running new members sync...');
+        try {
+            const syncResponse = await axios.post(`http://localhost:${PORT}/api/sync`, {});
+            masterResults.syncs.newMembers = {
+                success: true,
+                results: syncResponse.data.results
+            };
+            console.log('✅ New members sync complete');
+        } catch (error) {
+            masterResults.syncs.newMembers = {
+                success: false,
+                error: error.message
+            };
+            console.error('❌ New members sync failed:', error.message);
+        }
+        
+        // 2. Sync cancelled members
+        console.log('\n📝 [2/5] Running cancelled members sync...');
+        try {
+            const cancelledResponse = await axios.post(`http://localhost:${PORT}/api/sync-cancelled`, {});
+            masterResults.syncs.cancelledMembers = {
+                success: true,
+                results: cancelledResponse.data.results
+            };
+            console.log('✅ Cancelled members sync complete');
+        } catch (error) {
+            masterResults.syncs.cancelledMembers = {
+                success: false,
+                error: error.message
+            };
+            console.error('❌ Cancelled members sync failed:', error.message);
+        }
+        
+        // 3. Sync past due members
+        console.log('\n📝 [3/5] Running past due members sync...');
+        try {
+            const pastDueResponse = await axios.post(`http://localhost:${PORT}/api/sync-past-due`, {});
+            masterResults.syncs.pastDueMembers = {
+                success: true,
+                results: pastDueResponse.data.results
+            };
+            console.log('✅ Past due members sync complete');
+        } catch (error) {
+            masterResults.syncs.pastDueMembers = {
+                success: false,
+                error: error.message
+            };
+            console.error('❌ Past due members sync failed:', error.message);
+        }
+        
+        // 4. Sync new PT services
+        console.log('\n📝 [4/5] Running new PT services sync...');
+        try {
+            const ptNewResponse = await axios.post(`http://localhost:${PORT}/api/sync-pt-new`, {});
+            masterResults.syncs.newPTServices = {
+                success: true,
+                results: ptNewResponse.data.results
+            };
+            console.log('✅ New PT services sync complete');
+        } catch (error) {
+            masterResults.syncs.newPTServices = {
+                success: false,
+                error: error.message
+            };
+            console.error('❌ New PT services sync failed:', error.message);
+        }
+        
+        // 5. Sync deactivated PT services
+        console.log('\n📝 [5/5] Running deactivated PT services sync...');
+        try {
+            const ptDeactivatedResponse = await axios.post(`http://localhost:${PORT}/api/sync-pt-deactivated`, {});
+            masterResults.syncs.deactivatedPTServices = {
+                success: true,
+                results: ptDeactivatedResponse.data.results
+            };
+            console.log('✅ Deactivated PT services sync complete');
+        } catch (error) {
+            masterResults.syncs.deactivatedPTServices = {
+                success: false,
+                error: error.message
+            };
+            console.error('❌ Deactivated PT services sync failed:', error.message);
+        }
+        
+        // Calculate duration
+        masterResults.endTime = new Date().toISOString();
+        const duration = new Date(masterResults.endTime) - new Date(masterResults.startTime);
+        masterResults.totalDuration = `${Math.floor(duration / 1000 / 60)} minutes ${Math.floor((duration / 1000) % 60)} seconds`;
+        
+        console.log('\n✅ Master Sync Complete!');
+        console.log(`Total Duration: ${masterResults.totalDuration}`);
+        
+        // Send comprehensive email
+        await sendMasterSyncEmail(masterResults);
+        
+        res.json({
+            success: true,
+            message: 'Master sync completed - all endpoints processed',
+            results: masterResults,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Master sync error:', error);
+        
+        masterResults.endTime = new Date().toISOString();
+        masterResults.error = error.message;
+        
+        // Send error email
+        await sendMasterSyncEmail(masterResults, false);
+        
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            results: masterResults
+        });
+    }
+});
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({
