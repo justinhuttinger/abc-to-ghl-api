@@ -98,45 +98,72 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
     try {
         const url = `${ABC_API_URL}/${clubNumber}/members`;
         
-        // Fetch with size parameter - ABC supports up to 5000
-        const params = {
-            size: 5000  // ABC API max is around 5000
-        };
+        // Fetch all members using pagination
+        let allMembers = [];
+        let currentPage = 1;
+        let hasMorePages = true;
         
-        console.log(`Fetching all members from ABC club ${clubNumber} (size: 5000)`);
+        console.log(`Fetching all members from ABC club ${clubNumber} with pagination...`);
         
-        const response = await axios.get(url, {
-            headers: {
-                'accept': 'application/json',
-                'app_id': ABC_APP_ID,
-                'app_key': ABC_APP_KEY
-            },
-            params: params
-        });
+        while (hasMorePages) {
+            const params = {
+                size: 5000,
+                page: currentPage
+            };
+            
+            console.log(`  Fetching page ${currentPage}...`);
+            
+            const response = await axios.get(url, {
+                headers: {
+                    'accept': 'application/json',
+                    'app_id': ABC_APP_ID,
+                    'app_key': ABC_APP_KEY
+                },
+                params: params
+            });
+            
+            const members = response.data.members || [];
+            allMembers = allMembers.concat(members);
+            
+            console.log(`  Page ${currentPage}: ${members.length} members`);
+            
+            // Check if there's a next page
+            const nextPage = response.data.status?.nextPage;
+            if (nextPage && members.length > 0) {
+                currentPage++;
+            } else {
+                hasMorePages = false;
+            }
+            
+            // Safety limit: stop after 5 pages (25,000 members max)
+            if (currentPage > 5) {
+                console.log(`  Reached page limit of 5`);
+                hasMorePages = false;
+            }
+        }
         
-        let members = response.data.members || [];
-        console.log(`ABC returned ${members.length} total members`);
+        console.log(`Total members fetched: ${allMembers.length}`);
         
         // Filter out prospects - only keep actual members
-        members = members.filter(member => {
+        allMembers = allMembers.filter(member => {
             return member.personal?.joinStatus === 'Member';
         });
-        console.log(`Filtered to ${members.length} actual members (excluding prospects)`);
+        console.log(`Filtered to ${allMembers.length} actual members (excluding prospects)`);
         
         // Filter for inactive members (isActive can be boolean false or string "false")
-        members = members.filter(member => {
+        allMembers = allMembers.filter(member => {
             const isActive = member.personal?.isActive;
             // Check for boolean false or string "false"
             return isActive === false || isActive === 'false';
         });
         
-        console.log(`Filtered to ${members.length} inactive members`);
+        console.log(`Filtered to ${allMembers.length} inactive members`);
         
         // Filter by memberStatusDate if date range provided
         if (startDate && endDate) {
             console.log(`Filtering by memberStatusDate between ${startDate} and ${endDate}`);
             
-            members = members.filter(member => {
+            allMembers = allMembers.filter(member => {
                 const statusDate = member.personal?.memberStatusDate;
                 if (!statusDate) return false;
                 
@@ -148,12 +175,12 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
                 return memberDate >= startDate && memberDate <= endDate;
             });
             
-            console.log(`Filtered to ${members.length} with memberStatusDate in range`);
+            console.log(`Filtered to ${allMembers.length} with memberStatusDate in range`);
         }
         
         // Log breakdown of statuses
         const statusCounts = {};
-        members.forEach(m => {
+        allMembers.forEach(m => {
             const status = m.personal?.memberStatus || 'Unknown';
             statusCounts[status] = (statusCounts[status] || 0) + 1;
         });
@@ -163,7 +190,7 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
             console.log(`  - ${status}: ${count}`);
         });
         
-        return members;
+        return allMembers;
         
     } catch (error) {
         console.error('Error fetching cancelled members from ABC:', error.message);
