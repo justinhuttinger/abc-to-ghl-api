@@ -740,7 +740,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
                 delete updateData.locationId; // locationId not allowed in update
                 updateData.tags = existingTags; // Use combined tags
                 
-                const updateUrl = `${ghlApiKey}/contacts/${existingContactId}`;
+                const updateUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
                 const response = await axios.put(updateUrl, updateData, { headers: headers });
                 console.log(`✅ Updated contact in GHL: ${contactData.email} (added '${customTag}' tag)`);
                 return { action: 'updated', contact: response.data };
@@ -787,7 +787,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
                             delete updateData.locationId; // Remove for update
                             updateData.tags = existingTags; // Use combined tags
                             
-                            const updateUrl = `${ghlApiKey}/contacts/${foundContact.id}`;
+                            const updateUrl = `${GHL_API_URL}/contacts/${foundContact.id}`;
                             const response = await axios.put(updateUrl, updateData, { headers: headers });
                             console.log(`✅ Updated existing duplicate: ${contactData.email} (added '${customTag}' tag)`);
                             return { action: 'updated', contact: response.data };
