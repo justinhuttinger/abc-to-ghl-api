@@ -47,10 +47,10 @@ let clubsConfig = { clubs: [] };
 try {
     const configFile = fs.readFileSync('./clubs-config.json', 'utf8');
     clubsConfig = JSON.parse(configFile);
-    console.log(`✅ Loaded ${clubsConfig.clubs.length} clubs from configuration`);
+    console.log('Loaded ' + clubsConfig.clubs.length + ' clubs from configuration');
 } catch (error) {
-    console.error('⚠️ Failed to load clubs-config.json:', error.message);
-    console.error('   Server will start but syncs will fail without club configuration');
+    console.error('Failed to load clubs-config.json:', error.message);
+    console.error('Server will start but syncs will fail without club configuration');
 }
 
 // Logging middleware
