@@ -2,6 +2,10 @@ const express = require('express');
 const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
+const express = require('express');
+const axios = require('axios');
+const fs = require('fs'); // ADD THIS LINE
+const app = express();
 
 // Middleware
 app.use(express.json());
@@ -11,8 +15,22 @@ const ABC_API_URL = process.env.ABC_API_URL || 'https://api.abcfinancial.com/res
 const ABC_APP_ID = process.env.ABC_APP_ID;
 const ABC_APP_KEY = process.env.ABC_APP_KEY;
 const GHL_API_URL = process.env.GHL_API_URL || 'https://services.leadconnectorhq.com';
-const GHL_API_KEY = process.env.GHL_API_KEY;
-const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
+
+// REMOVE these two lines (no longer needed at global level):
+// const GHL_API_KEY = process.env.GHL_API_KEY;
+// const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
+
+// Load clubs configuration
+let clubsConfig = { clubs: [] };
+try {
+    const configFile = fs.readFileSync('./clubs-config.json', 'utf8');
+    clubsConfig = JSON.parse(configFile);
+    console.log(`✅ Loaded ${clubsConfig.clubs.length} clubs from configuration`);
+} catch (error) {
+    console.error('⚠️ Failed to load clubs-config.json:', error.message);
+    console.error('   Server will start but syncs will fail without club configuration');
+}
+
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -630,7 +648,7 @@ async function fetchMemberByIdFromABC(clubNumber, memberId) {
  * @param {string} serviceEmployee - Optional service employee name for PT clients
  * @returns {Promise<Object>} GHL response
  */
-async function syncContactToGHL(member, customTag = 'sale', serviceEmployee = null) {
+async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 'sale', serviceEmployee = null) {
     try {
         // Map ABC member data to GHL contact format
         const personal = member.personal || {};
@@ -802,7 +820,7 @@ async function syncContactToGHL(member, customTag = 'sale', serviceEmployee = nu
  * @param {string} customTag - Tag to add
  * @returns {Promise<Object>} GHL response
  */
-async function addTagToContact(memberEmail, customTag) {
+async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag) {
     try {
         const headers = {
             'Authorization': `Bearer ${GHL_API_KEY}`,
@@ -1059,28 +1077,22 @@ app.get('/api/test-ghl', async (req, res) => {
     }
 });
 
-// Main sync endpoint with parameters
+// Main sync endpoint - syncs ALL clubs at once
 app.post('/api/sync', async (req, res) => {
-    let { clubNumber, clubNumbers, startDate, endDate } = req.body;
+    let { startDate, endDate } = req.body;
     
     // Validate required configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY || !GHL_LOCATION_ID) {
+    if (!ABC_APP_ID || !ABC_APP_KEY) {
         return res.status(500).json({
-            error: 'API keys not configured',
+            error: 'ABC API keys not configured',
             abc_app_id: ABC_APP_ID ? 'ok' : 'missing',
-            abc_app_key: ABC_APP_KEY ? 'ok' : 'missing',
-            ghl_api_key: GHL_API_KEY ? 'ok' : 'missing',
-            ghl_location_id: GHL_LOCATION_ID ? 'ok' : 'missing'
+            abc_app_key: ABC_APP_KEY ? 'ok' : 'missing'
         });
     }
     
-    // Validate club number(s)
-    if (!clubNumber && !clubNumbers) {
-        return res.status(400).json({
-            error: 'clubNumber or clubNumbers required',
-            example: {
-                clubNumber: '30935'
-            }
+    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
+        return res.status(500).json({
+            error: 'No clubs configured in clubs-config.json'
         });
     }
     
@@ -1088,16 +1100,14 @@ app.post('/api/sync', async (req, res) => {
     if (!startDate && !endDate) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-        endDate = startDate; // Same day
+        startDate = yesterday.toISOString().split('T')[0];
+        endDate = startDate;
         console.log(`No dates provided. Auto-set to yesterday: ${startDate}`);
     }
     
     try {
-        // Handle multiple clubs or single club
-        const clubs = clubNumbers || [clubNumber];
         const results = {
-            totalClubs: clubs.length,
+            totalClubs: 0,
             totalMembers: 0,
             created: 0,
             updated: 0,
@@ -1110,11 +1120,17 @@ app.post('/api/sync', async (req, res) => {
         // Excluded membership types
         const excludedMembershipTypes = ['NON-MEMBER', 'Employee'];
         
-        // Process each club
-        for (const club of clubs) {
-            console.log(`\n=== Processing Club: ${club} ===`);
+        // Process each enabled club
+        const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
+        results.totalClubs = enabledClubs.length;
+        
+        console.log(`\n🏢 Processing ${enabledClubs.length} clubs...`);
+        
+        for (const club of enabledClubs) {
+            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
             const clubResult = {
-                clubNumber: club,
+                clubNumber: club.clubNumber,
+                clubName: club.clubName,
                 members: 0,
                 created: 0,
                 updated: 0,
@@ -1126,13 +1142,13 @@ app.post('/api/sync', async (req, res) => {
             
             try {
                 // Fetch members from ABC
-                const members = await fetchMembersFromABC(club, startDate, endDate);
+                const members = await fetchMembersFromABC(club.clubNumber, startDate, endDate);
                 clubResult.members = members.length || 0;
                 results.totalMembers += clubResult.members;
                 
                 console.log(`Fetched ${members.length} members from ABC`);
                 
-                // Sync each member to GHL
+                // Sync each member to GHL using this club's credentials
                 for (const member of members) {
                     try {
                         const membershipType = member.agreement?.membershipType || '';
@@ -1151,7 +1167,12 @@ app.post('/api/sync', async (req, res) => {
                             continue;
                         }
                         
-                        const result = await syncContactToGHL(member);
+                        // Pass club-specific GHL credentials
+                        const result = await syncContactToGHL(
+                            member, 
+                            club.ghlApiKey, 
+                            club.ghlLocationId
+                        );
                         
                         if (result.action === 'created') {
                             clubResult.created++;
@@ -1181,7 +1202,8 @@ app.post('/api/sync', async (req, res) => {
             results.clubs.push(clubResult);
         }
         
-        console.log('\n=== Sync Complete ===');
+        console.log('\n=== ALL CLUBS SYNC COMPLETE ===');
+        console.log(`Total Clubs: ${results.totalClubs}`);
         console.log(`Total Members: ${results.totalMembers}`);
         console.log(`Created: ${results.created}`);
         console.log(`Updated: ${results.updated}`);
@@ -1190,7 +1212,7 @@ app.post('/api/sync', async (req, res) => {
         
         res.json({
             success: true,
-            message: 'Sync completed',
+            message: 'Multi-club sync completed',
             results: results,
             timestamp: new Date().toISOString()
         });
