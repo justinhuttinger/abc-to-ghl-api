@@ -651,7 +651,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
         const agreement = member.agreement || {};
         
         const contactData = {
-            locationId: GHL_LOCATION_ID,
+            locationId: ghlLocationId,
             firstName: personal.firstName || '',
             lastName: personal.lastName || '',
             email: personal.email || '',
@@ -686,7 +686,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
         };
         
         const headers = {
-            'Authorization': `Bearer ${GHL_API_KEY}`,
+            'Authorization': `Bearer ${ghlApiKey}`,
             'Version': '2021-07-28',
             'Content-Type': 'application/json'
         };
@@ -740,7 +740,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
                 delete updateData.locationId; // locationId not allowed in update
                 updateData.tags = existingTags; // Use combined tags
                 
-                const updateUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
+                const updateUrl = `${ghlApiKey}/contacts/${existingContactId}`;
                 const response = await axios.put(updateUrl, updateData, { headers: headers });
                 console.log(`✅ Updated contact in GHL: ${contactData.email} (added '${customTag}' tag)`);
                 return { action: 'updated', contact: response.data };
@@ -752,7 +752,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
         } else {
             // CREATE new contact - locationId IS required here
             try {
-                const createUrl = `${GHL_API_URL}/contacts/`;
+                const createUrl = `${GhlApiKey}/contacts/`;
                 const response = await axios.post(createUrl, contactData, { headers: headers });
                 console.log(`✅ Created contact in GHL: ${contactData.email} (with '${customTag}' tag)`);
                 return { action: 'created', contact: response.data };
@@ -766,10 +766,10 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
                     
                     // Try a more thorough search
                     try {
-                        const retrySearch = await axios.get(`${GHL_API_URL}/contacts/`, {
+                        const retrySearch = await axios.get(`${ghlApiKey}/contacts/`, {
                             headers: headers,
                             params: { 
-                                locationId: GHL_LOCATION_ID,
+                                locationId: ghlLocationId,
                                 query: contactData.email
                             }
                         });
@@ -787,7 +787,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
                             delete updateData.locationId; // Remove for update
                             updateData.tags = existingTags; // Use combined tags
                             
-                            const updateUrl = `${GHL_API_URL}/contacts/${foundContact.id}`;
+                            const updateUrl = `${ghlApiKey}/contacts/${foundContact.id}`;
                             const response = await axios.put(updateUrl, updateData, { headers: headers });
                             console.log(`✅ Updated existing duplicate: ${contactData.email} (added '${customTag}' tag)`);
                             return { action: 'updated', contact: response.data };
@@ -819,16 +819,16 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
 async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag) {
     try {
         const headers = {
-            'Authorization': `Bearer ${GHL_API_KEY}`,
+            'Authorization': `Bearer ${ghlApiKey}`,
             'Version': '2021-07-28',
             'Content-Type': 'application/json'
         };
         
         // Search for contact by email
-        const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
+        const searchResponse = await axios.get(`${ghlApiKey}/contacts/`, {
             headers: headers,
             params: { 
-                locationId: GHL_LOCATION_ID,
+                locationId: ghlLocationId,
                 query: memberEmail
             }
         });
@@ -861,7 +861,7 @@ async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag)
         existingTags.push(customTag);
         
         // Update contact with new tag
-        const updateUrl = `${GHL_API_URL}/contacts/${exactMatch.id}`;
+        const updateUrl = `${ghlApiKey}/contacts/${exactMatch.id}`;
         const response = await axios.put(updateUrl, {
             tags: existingTags
         }, { headers: headers });
