@@ -35,34 +35,64 @@ async function fetchMembersFromABC(clubNumber, startDate = null, endDate = null)
     try {
         const url = `${ABC_API_URL}/${clubNumber}/members`;
         
-        // ABC's date filters don't work reliably, so fetch all and filter in code
-        const params = {};
+        // Fetch all members using pagination
+        let allMembers = [];
+        let currentPage = 1;
+        let hasMorePages = true;
         
-        console.log(`Fetching all members from ABC club ${clubNumber}`);
+        console.log(`Fetching all members from ABC club ${clubNumber} with pagination...`);
         
-        const response = await axios.get(url, {
-            headers: {
-                'accept': 'application/json',
-                'app_id': ABC_APP_ID,
-                'app_key': ABC_APP_KEY
-            },
-            params: params
-        });
+        while (hasMorePages) {
+            const params = {
+                size: 5000,
+                page: currentPage
+            };
+            
+            console.log(`  Fetching page ${currentPage}...`);
+            
+            const response = await axios.get(url, {
+                headers: {
+                    'accept': 'application/json',
+                    'app_id': ABC_APP_ID,
+                    'app_key': ABC_APP_KEY
+                },
+                params: params
+            });
+            
+            const members = response.data.members || [];
+            allMembers = allMembers.concat(members);
+            
+            console.log(`  Page ${currentPage}: ${members.length} members`);
+            
+            // Check if there's a next page
+            const nextPage = response.data.status?.nextPage;
+            if (nextPage && members.length > 0) {
+                currentPage++;
+            } else {
+                hasMorePages = false;
+            }
+            
+            // Safety limit: stop after 50 pages (250,000 members max)
+            // This prevents infinite loops while supporting very large gym chains
+            if (currentPage > 50) {
+                console.log(`  ⚠️ Reached safety limit of 50 pages (250k members)`);
+                hasMorePages = false;
+            }
+        }
         
-        let members = response.data.members || [];
-        console.log(`ABC returned ${members.length} total members`);
+        console.log(`Total members fetched: ${allMembers.length}`);
         
         // Filter out prospects - only keep actual members
-        members = members.filter(member => {
+        allMembers = allMembers.filter(member => {
             return member.personal?.joinStatus === 'Member';
         });
-        console.log(`Filtered to ${members.length} actual members (excluding prospects)`);
+        console.log(`Filtered to ${allMembers.length} actual members (excluding prospects)`);
         
         // Filter by signDate if date range provided
         if (startDate && endDate) {
             console.log(`Filtering by signDate between ${startDate} and ${endDate}`);
             
-            members = members.filter(member => {
+            allMembers = allMembers.filter(member => {
                 const signDate = member.agreement?.signDate;
                 if (!signDate) return false;
                 
@@ -73,10 +103,10 @@ async function fetchMembersFromABC(clubNumber, startDate = null, endDate = null)
                 return memberDate >= startDate && memberDate <= endDate;
             });
             
-            console.log(`Filtered to ${members.length} members with signDate in range`);
+            console.log(`Filtered to ${allMembers.length} members with signDate in range`);
         }
         
-        return members;
+        return allMembers;
         
     } catch (error) {
         console.error('Error fetching from ABC:', error.message);
@@ -86,7 +116,6 @@ async function fetchMembersFromABC(clubNumber, startDate = null, endDate = null)
         throw new Error(`ABC API Error: ${error.response?.data?.message || error.message}`);
     }
 }
-
 /**
  * Fetch cancelled/inactive members from ABC
  * @param {string} clubNumber - The club number
