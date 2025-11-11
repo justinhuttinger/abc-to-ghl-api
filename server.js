@@ -266,37 +266,76 @@ async function fetchOneDayPastDueMembers(clubNumber) {
         // Filter for ACTIVE members only
         allMembers = allMembers.filter(member => {
             const isActive = member.personal?.isActive;
-            // Check for boolean true or string "true"
             return isActive === true || isActive === 'true';
         });
         console.log(`Filtered to ${allMembers.length} ACTIVE members`);
         
-        // Filter for members marked as past due
-        allMembers = allMembers.filter(member => {
-            return member.agreement?.isPastDue === true;
-        });
-        console.log(`Filtered to ${allMembers.length} members marked as past due`);
+        // Calculate today at midnight for consistent comparison
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         
-        // Filter for exactly 1 day past due
-        const today = new Date(new Date().toISOString().split('T')[0]); // Today with no time
+        console.log(`\n=== PAST DUE ANALYSIS ===`);
+        console.log(`Today's date: ${today.toISOString().split('T')[0]}`);
+        console.log(`Looking for nextBillingDate: ${new Date(today - 24*60*60*1000).toISOString().split('T')[0]} (yesterday)`);
         
-        allMembers = allMembers.filter(member => {
+        // First, let's see ALL members with past billing dates (for debugging)
+        const membersWithPastBillingDates = allMembers.filter(member => {
             const nextBillingDate = member.agreement?.nextBillingDate;
             if (!nextBillingDate) return false;
             
-            // Extract date part and create Date object
             const billingDate = new Date(nextBillingDate.split('T')[0]);
+            billingDate.setHours(0, 0, 0, 0);
             
-            // Calculate days past due
-            const daysPastDue = Math.floor((today - billingDate) / (1000 * 60 * 60 * 24));
-            
-            // Only include if exactly 1 day past due
-            return daysPastDue === 1;
+            return billingDate < today;
         });
         
-        console.log(`Filtered to ${allMembers.length} members exactly 1 day past due`);
+        console.log(`\nTotal ACTIVE members with billing dates in the past: ${membersWithPastBillingDates.length}`);
         
-        return allMembers;
+        // Show breakdown of how many days past due
+        if (membersWithPastBillingDates.length > 0) {
+            const breakdown = {};
+            membersWithPastBillingDates.forEach(member => {
+                const billingDate = new Date(member.agreement.nextBillingDate.split('T')[0]);
+                billingDate.setHours(0, 0, 0, 0);
+                const daysDiff = Math.floor((today - billingDate) / (1000 * 60 * 60 * 24));
+                breakdown[daysDiff] = (breakdown[daysDiff] || 0) + 1;
+            });
+            
+            console.log(`\nBreakdown by days past due:`);
+            Object.keys(breakdown).sort((a, b) => a - b).forEach(days => {
+                console.log(`  ${days} day(s) past due: ${breakdown[days]} members`);
+            });
+        }
+        
+        // Now filter for exactly 1 day past due
+        const oneDayPastDue = allMembers.filter(member => {
+            const nextBillingDate = member.agreement?.nextBillingDate;
+            if (!nextBillingDate) return false;
+            
+            const billingDate = new Date(nextBillingDate.split('T')[0]);
+            billingDate.setHours(0, 0, 0, 0);
+            
+            // Calculate days past due
+            const daysDiff = Math.floor((today - billingDate) / (1000 * 60 * 60 * 24));
+            
+            return daysDiff === 1;
+        });
+        
+        console.log(`\n✅ Found ${oneDayPastDue.length} members exactly 1 day past due`);
+        
+        // Show sample of 1-day past due members
+        if (oneDayPastDue.length > 0) {
+            console.log(`\nSample members (first 3):`);
+            oneDayPastDue.slice(0, 3).forEach((member, i) => {
+                console.log(`  ${i + 1}. ${member.personal?.firstName} ${member.personal?.lastName}`);
+                console.log(`     Email: ${member.personal?.email}`);
+                console.log(`     Next Billing Date: ${member.agreement?.nextBillingDate}`);
+                console.log(`     isPastDue flag: ${member.agreement?.isPastDue}`);
+                console.log(`     Past Due Balance: $${member.agreement?.pastDueBalance || 0}`);
+            });
+        }
+        
+        return oneDayPastDue;
         
     } catch (error) {
         console.error('Error fetching past due members from ABC:', error.message);
