@@ -98,18 +98,12 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
     try {
         const url = `${ABC_API_URL}/${clubNumber}/members`;
         
-        // Try to filter at API level first
+        // ABC's date filters don't work - fetch ALL members with large size
         const params = {
-            isActive: 'false',  // Only inactive members
-            memberStatus: 'Cancelled'  // Cancelled status
+            size: 10000  // Increase size to get all members
         };
         
-        // Use memberStatusDate range for when they became inactive
-        if (startDate && endDate) {
-            params.memberStatusDateRange = `${startDate},${endDate}`;
-        }
-        
-        console.log(`Fetching cancelled members from ABC with API filters:`, params);
+        console.log(`Fetching all members from ABC club ${clubNumber} (size: 10000)`);
         
         const response = await axios.get(url, {
             headers: {
@@ -121,7 +115,7 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
         });
         
         let members = response.data.members || [];
-        console.log(`ABC returned ${members.length} cancelled members via API filter`);
+        console.log(`ABC returned ${members.length} total members`);
         
         // Filter out prospects - only keep actual members
         members = members.filter(member => {
@@ -129,41 +123,34 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
         });
         console.log(`Filtered to ${members.length} actual members (excluding prospects)`);
         
-        // Also fetch "Return For Collection" members separately since they count as cancelled
-        console.log(`\nFetching "Return For Collection" members...`);
-        const rfcParams = {
-            isActive: 'false',
-            memberStatus: 'Return For Collection'
-        };
+        // Filter for inactive members (isActive === "false")
+        members = members.filter(member => {
+            return member.personal?.isActive === 'false';
+        });
         
+        console.log(`Filtered to ${members.length} inactive members (isActive: false)`);
+        
+        // Filter by memberStatusDate if date range provided
         if (startDate && endDate) {
-            rfcParams.memberStatusDateRange = `${startDate},${endDate}`;
+            console.log(`Filtering by memberStatusDate between ${startDate} and ${endDate}`);
+            
+            members = members.filter(member => {
+                const statusDate = member.personal?.memberStatusDate;
+                if (!statusDate) return false;
+                
+                // Extract just the date part (YYYY-MM-DD)
+                const memberDate = statusDate.split('T')[0];
+                
+                // Check if date falls in range
+                return memberDate >= startDate && memberDate <= endDate;
+            });
+            
+            console.log(`Filtered to ${members.length} with memberStatusDate in range`);
         }
-        
-        const rfcResponse = await axios.get(url, {
-            headers: {
-                'accept': 'application/json',
-                'app_id': ABC_APP_ID,
-                'app_key': ABC_APP_KEY
-            },
-            params: rfcParams
-        });
-        
-        let rfcMembers = rfcResponse.data.members || [];
-        console.log(`ABC returned ${rfcMembers.length} "Return For Collection" members`);
-        
-        // Filter RFC members for actual members only
-        rfcMembers = rfcMembers.filter(member => {
-            return member.personal?.joinStatus === 'Member';
-        });
-        
-        // Combine both lists
-        const allMembers = [...members, ...rfcMembers];
-        console.log(`\nTotal inactive members: ${allMembers.length}`);
         
         // Log breakdown of statuses
         const statusCounts = {};
-        allMembers.forEach(m => {
+        members.forEach(m => {
             const status = m.personal?.memberStatus || 'Unknown';
             statusCounts[status] = (statusCounts[status] || 0) + 1;
         });
@@ -173,7 +160,7 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
             console.log(`  - ${status}: ${count}`);
         });
         
-        return allMembers;
+        return members;
         
     } catch (error) {
         console.error('Error fetching cancelled members from ABC:', error.message);
