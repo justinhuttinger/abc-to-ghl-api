@@ -203,6 +203,111 @@ async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
 }
 
 /**
+ * Fetch active members who are exactly 1 day past due
+ * @param {string} clubNumber - The club number
+ * @returns {Promise<Array>} Array of past due members
+ */
+async function fetchOneDayPastDueMembers(clubNumber) {
+    try {
+        const url = `${ABC_API_URL}/${clubNumber}/members`;
+        
+        // Fetch all members using pagination
+        let allMembers = [];
+        let currentPage = 1;
+        let hasMorePages = true;
+        
+        console.log(`Fetching all members from ABC club ${clubNumber} with pagination...`);
+        
+        while (hasMorePages) {
+            const params = {
+                size: 5000,
+                page: currentPage
+            };
+            
+            console.log(`  Fetching page ${currentPage}...`);
+            
+            const response = await axios.get(url, {
+                headers: {
+                    'accept': 'application/json',
+                    'app_id': ABC_APP_ID,
+                    'app_key': ABC_APP_KEY
+                },
+                params: params
+            });
+            
+            const members = response.data.members || [];
+            allMembers = allMembers.concat(members);
+            
+            console.log(`  Page ${currentPage}: ${members.length} members`);
+            
+            // Check if there's a next page
+            const nextPage = response.data.status?.nextPage;
+            if (nextPage && members.length > 0) {
+                currentPage++;
+            } else {
+                hasMorePages = false;
+            }
+            
+            // Safety limit: stop after 50 pages (250,000 members max)
+            if (currentPage > 50) {
+                console.log(`  ⚠️ Reached safety limit of 50 pages (250k members)`);
+                hasMorePages = false;
+            }
+        }
+        
+        console.log(`Total members fetched: ${allMembers.length}`);
+        
+        // Filter out prospects - only keep actual members
+        allMembers = allMembers.filter(member => {
+            return member.personal?.joinStatus === 'Member';
+        });
+        console.log(`Filtered to ${allMembers.length} actual members (excluding prospects)`);
+        
+        // Filter for ACTIVE members only
+        allMembers = allMembers.filter(member => {
+            const isActive = member.personal?.isActive;
+            // Check for boolean true or string "true"
+            return isActive === true || isActive === 'true';
+        });
+        console.log(`Filtered to ${allMembers.length} ACTIVE members`);
+        
+        // Filter for members marked as past due
+        allMembers = allMembers.filter(member => {
+            return member.agreement?.isPastDue === true;
+        });
+        console.log(`Filtered to ${allMembers.length} members marked as past due`);
+        
+        // Filter for exactly 1 day past due
+        const today = new Date(new Date().toISOString().split('T')[0]); // Today with no time
+        
+        allMembers = allMembers.filter(member => {
+            const nextBillingDate = member.agreement?.nextBillingDate;
+            if (!nextBillingDate) return false;
+            
+            // Extract date part and create Date object
+            const billingDate = new Date(nextBillingDate.split('T')[0]);
+            
+            // Calculate days past due
+            const daysPastDue = Math.floor((today - billingDate) / (1000 * 60 * 60 * 24));
+            
+            // Only include if exactly 1 day past due
+            return daysPastDue === 1;
+        });
+        
+        console.log(`Filtered to ${allMembers.length} members exactly 1 day past due`);
+        
+        return allMembers;
+        
+    } catch (error) {
+        console.error('Error fetching past due members from ABC:', error.message);
+        if (error.response) {
+            console.error('ABC API Response:', error.response.data);
+        }
+        throw new Error(`ABC API Error: ${error.response?.data?.message || error.message}`);
+    }
+}
+
+/**
  * Fetch recurring services from ABC
  * @param {string} clubNumber - The club number
  * @param {string} startDate - Optional start date for filtering
@@ -711,6 +816,7 @@ app.get('/', (req, res) => {
             'GET /api/debug-abc': 'Debug - see raw ABC member data',
             'POST /api/sync': 'Sync new members (tag: sale)',
             'POST /api/sync-cancelled': 'Sync cancelled members (tag: cancelled / past member)',
+            'POST /api/sync-past-due': 'Sync 1-day past due ACTIVE members (tag: past due)',
             'POST /api/sync-pt-new': 'Sync new PT services (tag: pt current)',
             'POST /api/sync-pt-deactivated': 'Sync deactivated PT (tag: ex pt)',
             'GET /api/test-abc': 'Test ABC API connection',
@@ -1129,6 +1235,103 @@ app.post('/api/sync-cancelled', async (req, res) => {
         
     } catch (error) {
         console.error('Cancelled sync error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Sync past due members - sync active members exactly 1 day past due
+app.post('/api/sync-past-due', async (req, res) => {
+    let { clubNumber } = req.body;
+    
+    // Validate configuration
+    if (!ABC_APP_ID || !ABC_APP_KEY || !GHL_API_KEY || !GHL_LOCATION_ID) {
+        return res.status(500).json({
+            error: 'API keys not configured'
+        });
+    }
+    
+    // Default club if not specified
+    if (!clubNumber) {
+        clubNumber = '30935';
+    }
+    
+    try {
+        console.log(`\n=== Syncing Past Due Members (1 Day) ===`);
+        
+        const results = {
+            type: 'past_due_members',
+            clubNumber: clubNumber,
+            daysPastDue: 1,
+            totalMembers: 0,
+            tagged: 0,
+            alreadyTagged: 0,
+            notFound: 0,
+            errors: 0,
+            members: []
+        };
+        
+        // Fetch members exactly 1 day past due
+        const members = await fetchOneDayPastDueMembers(clubNumber);
+        results.totalMembers = members.length;
+        
+        console.log(`Found ${members.length} members 1 day past due`);
+        
+        // Tag each past due member in GHL
+        for (const member of members) {
+            try {
+                const personal = member.personal || {};
+                const agreement = member.agreement || {};
+                const email = personal.email;
+                
+                if (!email) {
+                    console.log(`⚠️ Skipping member without email: ${member.memberId}`);
+                    results.notFound++;
+                    continue;
+                }
+                
+                // Add 'past due' tag
+                const result = await addTagToContact(email, 'past due');
+                
+                if (result.action === 'tagged') {
+                    results.tagged++;
+                } else if (result.action === 'already_tagged') {
+                    results.alreadyTagged++;
+                } else if (result.action === 'not_found') {
+                    results.notFound++;
+                }
+                
+                results.members.push({
+                    email: email,
+                    name: `${personal.firstName} ${personal.lastName}`,
+                    nextBillingDate: agreement.nextBillingDate,
+                    pastDueBalance: agreement.pastDueBalance,
+                    action: result.action
+                });
+                
+            } catch (memberError) {
+                results.errors++;
+                console.error(`Error processing member: ${memberError.message}`);
+            }
+        }
+        
+        console.log(`\n=== Past Due Members Sync Complete ===`);
+        console.log(`Tagged: ${results.tagged}`);
+        console.log(`Already Tagged: ${results.alreadyTagged}`);
+        console.log(`Not Found: ${results.notFound}`);
+        console.log(`Errors: ${results.errors}`);
+        
+        res.json({
+            success: true,
+            message: 'Past due members sync completed',
+            results: results,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Past due sync error:', error);
         res.status(500).json({
             success: false,
             error: error.message
