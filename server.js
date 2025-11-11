@@ -1302,14 +1302,17 @@ app.post('/api/sync', async (req, res) => {
         });
     }
     
-    // AUTO-CALCULATE YESTERDAY'S DATE if no dates provided
-    if (!startDate && !endDate) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0];
-        endDate = startDate;
-        console.log(`No dates provided. Auto-set to yesterday: ${startDate}`);
-    }
+    // Calculate last 3 days if no dates provided
+if (!startDate && !endDate) {
+    const today = new Date();
+    const end = new Date(today);
+    end.setDate(end.getDate() - 1); // Yesterday
+    const start = new Date(today);
+    start.setDate(start.getDate() - 3); // 3 days ago
+    startDate = start.toISOString().split('T')[0];
+    endDate = end.toISOString().split('T')[0];
+    console.log(`Auto-set to last 3 days: ${startDate} to ${endDate}`);
+}
     
     try {
         const results = {
@@ -1450,14 +1453,17 @@ app.post('/api/sync-cancelled', async (req, res) => {
         });
     }
     
-    // Calculate yesterday if no dates provided
-    if (!startDate && !endDate) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0];
-        endDate = startDate;
-        console.log(`Auto-set to yesterday: ${startDate}`);
-    }
+    // Calculate last 3 days if no dates provided
+if (!startDate && !endDate) {
+    const today = new Date();
+    const end = new Date(today);
+    end.setDate(end.getDate() - 1); // Yesterday
+    const start = new Date(today);
+    start.setDate(start.getDate() - 3); // 3 days ago
+    startDate = start.toISOString().split('T')[0];
+    endDate = end.toISOString().split('T')[0];
+    console.log(`Auto-set to last 3 days: ${startDate} to ${endDate}`);
+}
     
     try {
         console.log(`\n🏢 Processing cancelled members for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
@@ -1724,14 +1730,17 @@ app.post('/api/sync-pt-new', async (req, res) => {
         });
     }
     
-    // Calculate yesterday if no dates provided
-    if (!startDate && !endDate) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0];
-        endDate = startDate;
-        console.log(`Auto-set to yesterday: ${startDate}`);
-    }
+  // Calculate last 3 days if no dates provided
+if (!startDate && !endDate) {
+    const today = new Date();
+    const end = new Date(today);
+    end.setDate(end.getDate() - 1); // Yesterday
+    const start = new Date(today);
+    start.setDate(start.getDate() - 3); // 3 days ago
+    startDate = start.toISOString().split('T')[0];
+    endDate = end.toISOString().split('T')[0];
+    console.log(`Auto-set to last 3 days: ${startDate} to ${endDate}`);
+}
     
     try {
         console.log(`\n🏢 Processing new PT services for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
@@ -1893,14 +1902,17 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
         });
     }
     
-    // Calculate yesterday if no dates provided
-    if (!startDate && !endDate) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0];
-        endDate = startDate;
-        console.log(`Auto-set to yesterday: ${startDate}`);
-    }
+   // Calculate last 3 days if no dates provided
+if (!startDate && !endDate) {
+    const today = new Date();
+    const end = new Date(today);
+    end.setDate(end.getDate() - 1); // Yesterday
+    const start = new Date(today);
+    start.setDate(start.getDate() - 3); // 3 days ago
+    startDate = start.toISOString().split('T')[0];
+    endDate = end.toISOString().split('T')[0];
+    console.log(`Auto-set to last 3 days: ${startDate} to ${endDate}`);
+}
     
     try {
         console.log(`\n🏢 Processing deactivated PT services for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
