@@ -1,0 +1,46 @@
+{
+  "clubs": [
+    {
+      "clubNumber": "30935",
+      "clubName": "Club 1",
+      "ghlLocationId": "GjtINe5Nv5RwS5BVM9gY",
+      "ghlApiKey": "pit-92120ef0-6eae-4d30-874f-77ad7829e7ee",
+      "enabled": true
+    },
+    {
+      "clubNumber": "30936",
+      "clubName": "Club 2",
+      "ghlLocationId": "YOUR_GHL_LOCATION_ID_2",
+      "ghlApiKey": "YOUR_GHL_API_KEY_2",
+      "enabled": false
+    },
+    {
+      "clubNumber": "30937",
+      "clubName": "Club 3",
+      "ghlLocationId": "YOUR_GHL_LOCATION_ID_3",
+      "ghlApiKey": "YOUR_GHL_API_KEY_3",
+      "enabled": false
+    },
+    {
+      "clubNumber": "30938",
+      "clubName": "Club 4",
+      "ghlLocationId": "YOUR_GHL_LOCATION_ID_4",
+      "ghlApiKey": "YOUR_GHL_API_KEY_4",
+      "enabled": false
+    },
+    {
+      "clubNumber": "30939",
+      "clubName": "Club 5",
+      "ghlLocationId": "YOUR_GHL_LOCATION_ID_5",
+      "ghlApiKey": "YOUR_GHL_API_KEY_5",
+      "enabled": false
+    },
+    {
+      "clubNumber": "31598",
+      "clubName": "Springfield",
+      "ghlLocationId": "xXV3CXt5DkgfGnTt8CG1",
+      "ghlApiKey": "pit-5709f4e6-62ff-4c62-b304-86ee6a5073a8",
+      "enabled": true
+    }
+  ]
+}
