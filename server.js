@@ -24,6 +24,12 @@ const NOTIFICATION_EMAIL = process.env.NOTIFICATION_EMAIL || 'justin@wcstrength.
 // Create email transporter
 let emailTransporter = null;
 if (EMAIL_USER && EMAIL_PASS) {
+    console.log('📧 Email Config:');
+    console.log('   Host:', EMAIL_HOST);
+    console.log('   Port:', EMAIL_PORT);
+    console.log('   User:', EMAIL_USER);
+    console.log('   Pass:', EMAIL_PASS ? 'Set (length: ' + EMAIL_PASS.length + ')' : 'NOT SET');
+    
     emailTransporter = nodemailer.createTransport({
         host: EMAIL_HOST,
         port: EMAIL_PORT,
@@ -34,9 +40,7 @@ if (EMAIL_USER && EMAIL_PASS) {
         }
     });
     console.log('✅ Email notifications enabled');
-} else {
-    console.log('⚠️ Email notifications disabled (EMAIL_USER/EMAIL_PASS not configured)');
-}
+```
 
 // Load clubs configuration
 let clubsConfig = { clubs: [] };
@@ -2250,6 +2254,56 @@ app.post('/api/sync-all', async (req, res) => {
             success: false,
             error: error.message,
             results: masterResults
+        });
+    }
+});
+
+// Test email endpoint - just sends a test email
+app.get('/api/test-email', async (req, res) => {
+    console.log('Testing email notification...');
+    
+    // Create fake results for testing
+    const testResults = {
+        startTime: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        totalDuration: '2 minutes 30 seconds',
+        syncs: {
+            newMembers: {
+                success: true,
+                results: {
+                    totalClubs: 2,
+                    totalMembers: 50,
+                    created: 25,
+                    updated: 25,
+                    skipped: 0,
+                    errors: 0,
+                    dateRange: '2025-11-10'
+                }
+            },
+            cancelledMembers: {
+                success: true,
+                results: {
+                    totalClubs: 2,
+                    totalMembers: 5,
+                    tagged: 5,
+                    alreadyTagged: 0,
+                    notFound: 0,
+                    errors: 0
+                }
+            }
+        }
+    };
+    
+    try {
+        await sendMasterSyncEmail(testResults);
+        res.json({
+            success: true,
+            message: 'Test email sent! Check justin@wcstrength.com'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
         });
     }
 });
