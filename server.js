@@ -905,20 +905,6 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
         // First, search for existing contact by email
         let contactExists = false;
         let existingContactId = null;
-        
-        try {
-            // Search using query parameter
-            const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
-                headers: headers,
-                params: { 
-                    locationId: ghlLocationId,
-                    query: contactData.email
-                }
-            });
-            
-            // First, search for existing contact by email using duplicate check endpoint
-let contactExists = false;
-let existingContactId = null;
 
 try {
     // Use GHL's duplicate check endpoint (more reliable)
