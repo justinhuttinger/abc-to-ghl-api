@@ -1051,7 +1051,7 @@ try {
                 
                 throw createError;
             }
-        }
+        } // Close else block
         
     } catch (error) {
         console.error('Error syncing to GHL:', error.message);
