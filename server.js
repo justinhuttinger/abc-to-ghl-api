@@ -905,6 +905,20 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
         // First, search for existing contact by email
         let contactExists = false;
         let existingContactId = null;
+        
+        try {
+            // Search using query parameter
+            const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
+                headers: headers,
+                params: { 
+                    locationId: ghlLocationId,
+                    query: contactData.email
+                }
+            });
+            
+            // First, search for existing contact by email using duplicate check endpoint
+let contactExists = false;
+let existingContactId = null;
 
 try {
     // Use GHL's duplicate check endpoint (more reliable)
@@ -971,7 +985,38 @@ try {
                     
                     console.log(`Duplicate detected for ${contactData.email}, searching again...`);
                     
-                    // Try a more thorough search
+                    // Check if GHL provided the contactId in the error (phone duplicate case)
+                    const duplicateContactId = createError.response?.data?.meta?.contactId;
+                    
+                    if (duplicateContactId) {
+                        // GHL told us the exact contact ID - use it directly
+                        try {
+                            console.log(`Found duplicate contact ID from error: ${duplicateContactId}`);
+                            
+                            // Get the existing contact
+                            const getUrl = `${GHL_API_URL}/contacts/${duplicateContactId}`;
+                            const existingContact = await axios.get(getUrl, { headers: headers });
+                            
+                            // Get existing tags and add new tag
+                            let existingTags = existingContact.data?.contact?.tags || [];
+                            if (!existingTags.includes(customTag)) {
+                                existingTags.push(customTag);
+                            }
+                            
+                            const updateData = { ...contactData };
+                            delete updateData.locationId; // Remove for update
+                            updateData.tags = existingTags; // Use combined tags
+                            
+                            const updateUrl = `${GHL_API_URL}/contacts/${duplicateContactId}`;
+                            const response = await axios.put(updateUrl, updateData, { headers: headers });
+                            console.log(`✅ Updated duplicate contact (matched by ${createError.response?.data?.meta?.matchingField}): ${contactData.email}`);
+                            return { action: 'updated', contact: response.data };
+                        } catch (updateError) {
+                            console.error(`Failed to update duplicate contact: ${updateError.message}`);
+                        }
+                    }
+                    
+                    // Fallback: Try a more thorough search
                     try {
                         const retrySearch = await axios.get(`${GHL_API_URL}/contacts/`, {
                             headers: headers,
@@ -1068,7 +1113,7 @@ async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag)
         existingTags.push(customTag);
         
         // Update contact with new tag
-        const updateUrl = `${ghlApiKey}/contacts/${exactMatch.id}`;
+        const updateUrl = `${GHL_API_URL}/contacts/${exactMatch.id}`;
         const response = await axios.put(updateUrl, {
             tags: existingTags
         }, { headers: headers });
