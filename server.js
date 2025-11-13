@@ -125,16 +125,24 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             html += '<h2>1️⃣ New Members Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
-    const r = sync.results;
-    html += '<ul>';
-    html += '<li><strong>Date Range:</strong> ' + r.dateRange + '</li>';  // ← ADD THIS LINE
-    html += '<li><strong>Total Clubs:</strong> ' + r.totalClubs + '</li>';
-    html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
-    html += '<li><strong>Created:</strong> ' + r.created + '</li>';
-    html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
-    html += '<li><strong>Skipped:</strong> ' + r.skipped + '</li>';
-    html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
-    html += '</ul>';
+                const r = sync.results;
+                html += '<p><strong>Date Range:</strong> ' + r.dateRange + '</p>';
+                html += '<p><strong>Overall:</strong> ' + r.totalMembers + ' total, ' + r.created + ' created, ' + r.updated + ' updated, ' + r.skipped + ' skipped, ' + r.errors + ' errors</p>';
+                
+                // Club-by-club breakdown
+                html += '<h3>By Club:</h3>';
+                if (r.clubs && r.clubs.length > 0) {
+                    r.clubs.forEach(club => {
+                        html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #4CAF50; padding-left: 10px;">';
+                        html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
+                        html += 'Members: ' + club.members + ' | ';
+                        html += 'Created: ' + club.created + ' | ';
+                        html += 'Updated: ' + club.updated + ' | ';
+                        html += 'Skipped: ' + club.skipped + ' | ';
+                        html += 'Errors: ' + club.errors;
+                        html += '</div>';
+                    });
+                }
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -146,16 +154,24 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             html += '<h2>2️⃣ Cancelled Members Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
-    const r = sync.results;
-    html += '<ul>';
-    html += '<li><strong>Date Range:</strong> ' + r.dateRange + '</li>';  // ← ADD THIS LINE
-    html += '<li><strong>Total Clubs:</strong> ' + r.totalClubs + '</li>';
-    html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
-    html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
-    html += '<li><strong>Already Tagged:</strong> ' + r.alreadyTagged + '</li>';
-    html += '<li><strong>Not Found:</strong> ' + r.notFound + '</li>';
-    html += '<li><strong>Errors:</strong> ' + r.errors + '</li>';
-    html += '</ul>';
+                const r = sync.results;
+                html += '<p><strong>Date Range:</strong> ' + r.dateRange + '</p>';
+                html += '<p><strong>Overall:</strong> ' + r.totalMembers + ' total, ' + r.tagged + ' tagged, ' + r.alreadyTagged + ' already tagged, ' + r.notFound + ' not found, ' + r.errors + ' errors</p>';
+                
+                // Club-by-club breakdown
+                html += '<h3>By Club:</h3>';
+                if (r.clubs && r.clubs.length > 0) {
+                    r.clubs.forEach(club => {
+                        html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #FF9800; padding-left: 10px;">';
+                        html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
+                        html += 'Members: ' + club.totalMembers + ' | ';
+                        html += 'Tagged: ' + club.tagged + ' | ';
+                        html += 'Already Tagged: ' + club.alreadyTagged + ' | ';
+                        html += 'Not Found: ' + club.notFound + ' | ';
+                        html += 'Errors: ' + club.errors;
+                        html += '</div>';
+                    });
+                }
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -164,15 +180,26 @@ async function sendMasterSyncEmail(masterResults, success = true) {
         // 3. Past Due Members
         if (masterResults.syncs.pastDueMembers) {
             const sync = masterResults.syncs.pastDueMembers;
-            html += '<h2>3️⃣ Past Due Members Sync</h2>';
+            html += '<h2>3️⃣ Past Due Members Sync (3 Days)</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
-           if (sync.success) {
-    const r = sync.results;
-    html += '<ul>';
-    html += '<li><strong>Days Past Due:</strong> 3</li>';  // ← ADD THIS LINE
-    html += '<li><strong>Total Members:</strong> ' + r.totalMembers + '</li>';
-    html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
-    html += '</ul>';
+            if (sync.success) {
+                const r = sync.results;
+                html += '<p><strong>Overall:</strong> ' + r.totalMembers + ' members 3 days past due, ' + r.tagged + ' tagged, ' + r.notFound + ' not found, ' + r.errors + ' errors</p>';
+                
+                // Club-by-club breakdown
+                html += '<h3>By Club:</h3>';
+                if (r.clubs && r.clubs.length > 0) {
+                    r.clubs.forEach(club => {
+                        html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #F44336; padding-left: 10px;">';
+                        html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
+                        html += 'Members: ' + club.totalMembers + ' | ';
+                        html += 'Tagged: ' + club.tagged + ' | ';
+                        html += 'Already Tagged: ' + club.alreadyTagged + ' | ';
+                        html += 'Not Found: ' + club.notFound + ' | ';
+                        html += 'Errors: ' + club.errors;
+                        html += '</div>';
+                    });
+                }
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -183,14 +210,25 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             const sync = masterResults.syncs.newPTServices;
             html += '<h2>4️⃣ New PT Services Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
-           if (sync.success) {
-    const r = sync.results;
-    html += '<ul>';
-    html += '<li><strong>Date Range:</strong> ' + r.dateRange + '</li>';  // ← ADD THIS LINE
-    html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
-    html += '<li><strong>Created:</strong> ' + r.created + '</li>';
-    html += '<li><strong>Updated:</strong> ' + r.updated + '</li>';
-    html += '</ul>';
+            if (sync.success) {
+                const r = sync.results;
+                html += '<p><strong>Date Range:</strong> ' + r.dateRange + '</p>';
+                html += '<p><strong>Overall:</strong> ' + r.totalServices + ' services, ' + r.created + ' created, ' + r.updated + ' updated, ' + r.tagged + ' tagged</p>';
+                
+                // Club-by-club breakdown
+                html += '<h3>By Club:</h3>';
+                if (r.clubs && r.clubs.length > 0) {
+                    r.clubs.forEach(club => {
+                        html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #2196F3; padding-left: 10px;">';
+                        html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
+                        html += 'Services: ' + club.totalServices + ' | ';
+                        html += 'Created: ' + club.created + ' | ';
+                        html += 'Updated: ' + club.updated + ' | ';
+                        html += 'Tagged: ' + club.tagged + ' | ';
+                        html += 'Errors: ' + club.errors;
+                        html += '</div>';
+                    });
+                }
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
@@ -202,12 +240,24 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             html += '<h2>5️⃣ Deactivated PT Services Sync</h2>';
             html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
             if (sync.success) {
-    const r = sync.results;
-    html += '<ul>';
-    html += '<li><strong>Date Range:</strong> ' + r.dateRange + '</li>';  // ← ADD THIS LINE
-    html += '<li><strong>Total Services:</strong> ' + r.totalServices + '</li>';
-    html += '<li><strong>Tagged:</strong> ' + r.tagged + '</li>';
-    html += '</ul>';
+                const r = sync.results;
+                html += '<p><strong>Date Range:</strong> ' + r.dateRange + '</p>';
+                html += '<p><strong>Overall:</strong> ' + r.totalServices + ' services deactivated, ' + r.tagged + ' tagged</p>';
+                
+                // Club-by-club breakdown
+                html += '<h3>By Club:</h3>';
+                if (r.clubs && r.clubs.length > 0) {
+                    r.clubs.forEach(club => {
+                        html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #9C27B0; padding-left: 10px;">';
+                        html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
+                        html += 'Services: ' + club.totalServices + ' | ';
+                        html += 'Created: ' + club.created + ' | ';
+                        html += 'Updated: ' + club.updated + ' | ';
+                        html += 'Tagged: ' + club.tagged + ' | ';
+                        html += 'Errors: ' + club.errors;
+                        html += '</div>';
+                    });
+                }
             } else {
                 html += '<p style="color: red;">Error: ' + sync.error + '</p>';
             }
