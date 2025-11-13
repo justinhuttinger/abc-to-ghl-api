@@ -813,12 +813,19 @@ async function fetchRecurringServicesFromABC(clubNumber, startDate = null, endDa
         
         const services = response.data.recurringServices || [];
         
-        // FILTER OUT 'FULL ACCESS EUG SPRING' - this is NOT a PT service
+        // FILTER OUT non-PT services
         const filteredServices = services.filter(service => {
-            return service.serviceItem !== 'FULL ACCESS EUG SPRING';
+            const serviceItem = service.serviceItem || '';
+            // Exclude these specific service items that are not PT
+            const excludedServices = [
+                'FULL ACCESS EUG SPRING',
+                'ChildCare 1st Child',
+                'ChildCare 2nd Child'
+            ];
+            return !excludedServices.includes(serviceItem);
         });
         
-        console.log(`Fetched ${services.length} total services, filtered to ${filteredServices.length} (excluded 'FULL ACCESS EUG SPRING')`);
+        console.log(`Fetched ${services.length} total services, filtered to ${filteredServices.length} (excluded: FULL ACCESS EUG SPRING, ChildCare services)`);
         return filteredServices;
         
     } catch (error) {
@@ -2369,37 +2376,47 @@ app.post('/api/sync-pif-completed', async (req, res) => {
             };
             
             try {
-                // Get all GHL contacts with 'PT pif' tag
+                // Get all GHL contacts with 'PT pif' tag using search endpoint
                 const headers = {
                     'Authorization': `Bearer ${club.ghlApiKey}`,
                     'Version': '2021-07-28',
                     'Content-Type': 'application/json'
                 };
                 
-                console.log('Fetching ALL GHL contacts with PT pif tag (paginated)...');
+                console.log('Fetching ALL GHL contacts with PT pif tag (paginated search)...');
                 
-                // Paginate through ALL contacts
-                let allContacts = [];
+                // Paginate through ALL contacts with PT pif tag
+                let allPifContacts = [];
                 let currentPage = 1;
                 let hasMorePages = true;
                 
                 while (hasMorePages) {
-                    const ghlResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
-                        headers: headers,
-                        params: { 
-                            locationId: club.ghlLocationId,
-                            limit: 100,
-                            skip: (currentPage - 1) * 100
-                        }
-                    });
+                    const searchBody = {
+                        locationId: club.ghlLocationId,
+                        page: currentPage,
+                        pageLimit: 100,
+                        filters: [
+                            {
+                                field: "tags",
+                                operator: "eq",
+                                value: "PT pif"
+                            }
+                        ]
+                    };
+                    
+                    const ghlResponse = await axios.post(`${GHL_API_URL}/contacts/search`, searchBody, { headers: headers });
                     
                     const contacts = ghlResponse.data.contacts || [];
-                    allContacts = allContacts.concat(contacts);
+                    allPifContacts = allPifContacts.concat(contacts);
                     
-                    console.log(`  Page ${currentPage}: ${contacts.length} contacts`);
+                    console.log(`  Page ${currentPage}: ${contacts.length} contacts with PT pif tag`);
                     
-                    // If we got less than 100, we've reached the end
-                    if (contacts.length < 100) {
+                    // Check if there are more pages
+                    const meta = ghlResponse.data.meta || {};
+                    const total = meta.total || 0;
+                    const currentCount = allPifContacts.length;
+                    
+                    if (currentCount >= total || contacts.length === 0) {
                         hasMorePages = false;
                     } else {
                         currentPage++;
@@ -2412,9 +2429,9 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                     }
                 }
                 
-                console.log(`Total contacts fetched: ${allContacts.length}`);
+                console.log(`Total PT pif contacts fetched: ${allPifContacts.length}`);
                 
-                const pifContacts = allContacts.filter(c => c.tags && c.tags.includes('PT pif'));
+                const pifContacts = allPifContacts;
                 
                 console.log(`Found ${pifContacts.length} contacts with PT pif tag`);
                 
