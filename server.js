@@ -902,45 +902,31 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
             'Content-Type': 'application/json'
         };
         
-        // First, search for existing contact by email
+        // First, search for existing contact by email using duplicate check endpoint
         let contactExists = false;
         let existingContactId = null;
-        
-        try {
-            // Search using query parameter
-            const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
-                headers: headers,
-                params: { 
-                    locationId: ghlLocationId,
-                    query: contactData.email
-                }
-            });
-            
-            // First, search for existing contact by email using duplicate check endpoint
-let contactExists = false;
-let existingContactId = null;
 
-try {
-    // Use GHL's duplicate check endpoint (more reliable)
-    const searchUrl = `${GHL_API_URL}/contacts/search/duplicate`;
-    const searchResponse = await axios.post(
-        searchUrl,
-        {
-            locationId: GHL_LOCATION_ID,
-            email: contactData.email
-        },
-        { headers: headers }
-    );
-    
-    // Check if we found the contact
-    if (searchResponse.data && searchResponse.data.contact) {
-        contactExists = true;
-        existingContactId = searchResponse.data.contact.id;
-        console.log(`Found existing contact: ${contactData.email} (ID: ${existingContactId})`);
-    }
-} catch (searchError) {
-    // If search fails, contact might not exist - we'll try to create
-    console.log(`Contact search failed for ${contactData.email}, will try to create`);
+        try {
+            // Use GHL's duplicate check endpoint (more reliable)
+            const searchUrl = `${GHL_API_URL}/contacts/search/duplicate`;
+            const searchResponse = await axios.post(
+                searchUrl,
+                {
+                    locationId: ghlLocationId,
+                    email: contactData.email
+                },
+                { headers: headers }
+            );
+            
+            // Check if we found the contact
+            if (searchResponse.data && searchResponse.data.contact) {
+                contactExists = true;
+                existingContactId = searchResponse.data.contact.id;
+                console.log(`Found existing contact: ${contactData.email} (ID: ${existingContactId})`);
+            }
+        } catch (searchError) {
+            // If search fails, contact might not exist - we'll try to create
+            console.log(`Contact search failed for ${contactData.email}, will try to create`);
 }
         
         // Update or Create contact
