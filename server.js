@@ -1267,8 +1267,9 @@ app.get('/health', (req, res) => {
 
 /**
  * Master sync endpoint - runs all 5 syncs in sequence
+ * Available at both /api/master-sync and /api/sync-all for compatibility
  */
-app.post('/api/master-sync', async (req, res) => {
+async function handleMasterSync(req, res) {
     console.log('\n🚀 MASTER SYNC INITIATED\n');
     console.log('═══════════════════════════════════════════════════════════');
     
@@ -1398,7 +1399,11 @@ app.post('/api/master-sync', async (req, res) => {
             results: masterResults
         });
     }
-});
+}
+
+// Register the master sync endpoint under both paths
+app.post('/api/master-sync', handleMasterSync);
+app.post('/api/sync-all', handleMasterSync);
 
 // Test email endpoint - just sends a test email
 app.get('/api/test-email', async (req, res) => {
