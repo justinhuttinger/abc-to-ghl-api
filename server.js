@@ -135,11 +135,11 @@ async function sendMasterSyncEmail(masterResults, success = true) {
                     r.clubs.forEach(club => {
                         html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #4CAF50; padding-left: 10px;">';
                         html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
-                        html += 'Members: ' + club.members + ' | ';
-                        html += 'Created: ' + club.created + ' | ';
-                        html += 'Updated: ' + club.updated + ' | ';
-                        html += 'Skipped: ' + club.skipped + ' | ';
-                        html += 'Errors: ' + club.errors;
+                        html += 'Members: ' + (club.members || 0) + ' | ';
+                        html += 'Created: ' + (club.created || 0) + ' | ';
+                        html += 'Updated: ' + (club.updated || 0) + ' | ';
+                        html += 'Skipped: ' + (club.skipped || 0) + ' | ';
+                        html += 'Errors: ' + (club.errors || 0);
                         html += '</div>';
                     });
                 }
@@ -164,11 +164,11 @@ async function sendMasterSyncEmail(masterResults, success = true) {
                     r.clubs.forEach(club => {
                         html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #FF9800; padding-left: 10px;">';
                         html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
-                        html += 'Members: ' + club.totalMembers + ' | ';
-                        html += 'Tagged: ' + club.tagged + ' | ';
-                        html += 'Already Tagged: ' + club.alreadyTagged + ' | ';
-                        html += 'Not Found: ' + club.notFound + ' | ';
-                        html += 'Errors: ' + club.errors;
+                        html += 'Members: ' + (club.totalMembers || 0) + ' | ';
+                        html += 'Tagged: ' + (club.tagged || 0) + ' | ';
+                        html += 'Already Tagged: ' + (club.alreadyTagged || 0) + ' | ';
+                        html += 'Not Found: ' + (club.notFound || 0) + ' | ';
+                        html += 'Errors: ' + (club.errors || 0);
                         html += '</div>';
                     });
                 }
@@ -192,11 +192,10 @@ async function sendMasterSyncEmail(masterResults, success = true) {
                     r.clubs.forEach(club => {
                         html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #F44336; padding-left: 10px;">';
                         html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
-                        html += 'Members: ' + club.totalMembers + ' | ';
-                        html += 'Tagged: ' + club.tagged + ' | ';
-                        html += 'Already Tagged: ' + club.alreadyTagged + ' | ';
-                        html += 'Not Found: ' + club.notFound + ' | ';
-                        html += 'Errors: ' + club.errors;
+                        html += 'Members: ' + (club.members || 0) + ' | ';
+                        html += 'Tagged: ' + (club.tagged || 0) + ' | ';
+                        html += 'Not Found: ' + (club.notFound || 0) + ' | ';
+                        html += 'Errors: ' + (club.errors || 0);
                         html += '</div>';
                     });
                 }
@@ -213,7 +212,7 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             if (sync.success) {
                 const r = sync.results;
                 html += '<p><strong>Date Range:</strong> ' + r.dateRange + '</p>';
-                html += '<p><strong>Overall:</strong> ' + r.totalServices + ' services, ' + r.created + ' created, ' + r.updated + ' updated, ' + r.tagged + ' tagged</p>';
+                html += '<p><strong>Overall:</strong> ' + r.totalServices + ' total, ' + r.tagged + ' tagged, ' + r.alreadyTagged + ' already tagged, ' + r.notFound + ' not found, ' + r.errors + ' errors</p>';
                 
                 // Club-by-club breakdown
                 html += '<h3>By Club:</h3>';
@@ -221,11 +220,11 @@ async function sendMasterSyncEmail(masterResults, success = true) {
                     r.clubs.forEach(club => {
                         html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #2196F3; padding-left: 10px;">';
                         html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
-                        html += 'Services: ' + club.totalServices + ' | ';
-                        html += 'Created: ' + club.created + ' | ';
-                        html += 'Updated: ' + club.updated + ' | ';
-                        html += 'Tagged: ' + club.tagged + ' | ';
-                        html += 'Errors: ' + club.errors;
+                        html += 'Services: ' + (club.totalServices || 0) + ' | ';
+                        html += 'Tagged: ' + (club.tagged || 0) + ' | ';
+                        html += 'Already Tagged: ' + (club.alreadyTagged || 0) + ' | ';
+                        html += 'Not Found: ' + (club.notFound || 0) + ' | ';
+                        html += 'Errors: ' + (club.errors || 0);
                         html += '</div>';
                     });
                 }
@@ -242,7 +241,7 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             if (sync.success) {
                 const r = sync.results;
                 html += '<p><strong>Date Range:</strong> ' + r.dateRange + '</p>';
-                html += '<p><strong>Overall:</strong> ' + r.totalServices + ' services deactivated, ' + r.tagged + ' tagged</p>';
+                html += '<p><strong>Overall:</strong> ' + r.totalServices + ' total, ' + r.tagged + ' tagged, ' + r.alreadyTagged + ' already tagged, ' + r.notFound + ' not found, ' + r.errors + ' errors</p>';
                 
                 // Club-by-club breakdown
                 html += '<h3>By Club:</h3>';
@@ -250,11 +249,11 @@ async function sendMasterSyncEmail(masterResults, success = true) {
                     r.clubs.forEach(club => {
                         html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #9C27B0; padding-left: 10px;">';
                         html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
-                        html += 'Services: ' + club.totalServices + ' | ';
-                        html += 'Created: ' + club.created + ' | ';
-                        html += 'Updated: ' + club.updated + ' | ';
-                        html += 'Tagged: ' + club.tagged + ' | ';
-                        html += 'Errors: ' + club.errors;
+                        html += 'Services: ' + (club.totalServices || 0) + ' | ';
+                        html += 'Tagged: ' + (club.tagged || 0) + ' | ';
+                        html += 'Already Tagged: ' + (club.alreadyTagged || 0) + ' | ';
+                        html += 'Not Found: ' + (club.notFound || 0) + ' | ';
+                        html += 'Errors: ' + (club.errors || 0);
                         html += '</div>';
                     });
                 }
@@ -264,17 +263,17 @@ async function sendMasterSyncEmail(masterResults, success = true) {
         }
         
         html += '<hr>';
-        html += '<p style="color: #666; font-size: 12px;">Automated report from WCS Sync Server</p>';
+        html += '<p style="color: #666; font-size: 12px;">This is an automated report from the WCS ABC-GHL Integration System</p>';
         
         const msg = {
             to: NOTIFICATION_EMAIL,
             from: EMAIL_USER || 'justin@wcstrength.com',
-            subject: success ? '✅ Daily Sync Complete - ' + masterResults.totalDuration : '❌ Daily Sync Failed',
+            subject: '🚀 Daily WCS Sync Report - ' + (success ? 'Success' : 'Failed'),
             html: html
         };
         
         await sgMail.send(msg);
-        console.log('📧 Master sync email sent to ' + NOTIFICATION_EMAIL);
+        console.log('📧 Master sync email sent successfully to ' + NOTIFICATION_EMAIL);
         
     } catch (error) {
         console.error('Failed to send master sync email:', error.message);
@@ -284,1154 +283,266 @@ async function sendMasterSyncEmail(masterResults, success = true) {
     }
 }
 
-
-// ====================================
-// UTILITY FUNCTIONS
-// ====================================
-
-// ====================================
-// UTILITY FUNCTIONS
-// ====================================
-
 /**
- * Fetch members from ABC platform
- * @param {string} clubNumber - The club number
- * @param {string} startDate - Optional start date (YYYY-MM-DD)
- * @param {string} endDate - Optional end date (YYYY-MM-DD)
- * @returns {Promise<Array>} Array of members
+ * Make ABC API request with authentication
  */
-async function fetchMembersFromABC(clubNumber, startDate = null, endDate = null) {
+async function makeABCRequest(endpoint, params = {}) {
     try {
-        const url = `${ABC_API_URL}/${clubNumber}/members`;
-        
-        // Fetch all members using pagination
-        let allMembers = [];
-        let currentPage = 1;
-        let hasMorePages = true;
-        
-        console.log(`Fetching all members from ABC club ${clubNumber} with pagination...`);
-        
-        while (hasMorePages) {
-            const params = {
-                size: 5000,
-                page: currentPage
-            };
-            
-            console.log(`  Fetching page ${currentPage}...`);
-            
-            const response = await axios.get(url, {
-                headers: {
-                    'accept': 'application/json',
-                    'app_id': ABC_APP_ID,
-                    'app_key': ABC_APP_KEY
-                },
-                params: params
-            });
-            
-            const members = response.data.members || [];
-            allMembers = allMembers.concat(members);
-            
-            console.log(`  Page ${currentPage}: ${members.length} members`);
-            
-            // Check if there's a next page
-            const nextPage = response.data.status?.nextPage;
-            if (nextPage && members.length > 0) {
-                currentPage++;
-            } else {
-                hasMorePages = false;
-            }
-            
-            // Safety limit: stop after 50 pages (250,000 members max)
-            // This prevents infinite loops while supporting very large gym chains
-            if (currentPage > 50) {
-                console.log(`  ⚠️ Reached safety limit of 50 pages (250k members)`);
-                hasMorePages = false;
-            }
-        }
-        
-        console.log(`Total members fetched: ${allMembers.length}`);
-        
-        // Filter out prospects - only keep actual members
-        allMembers = allMembers.filter(member => {
-            return member.personal?.joinStatus === 'Member';
-        });
-        console.log(`Filtered to ${allMembers.length} actual members (excluding prospects)`);
-        
-        // Filter by signDate if date range provided
-        if (startDate && endDate) {
-            console.log(`Filtering by signDate between ${startDate} and ${endDate}`);
-            
-            allMembers = allMembers.filter(member => {
-                const signDate = member.agreement?.signDate;
-                if (!signDate) return false;
-                
-                // Extract just the date part (YYYY-MM-DD)
-                const memberDate = signDate.split('T')[0];
-                
-                // Check if date falls in range
-                return memberDate >= startDate && memberDate <= endDate;
-            });
-            
-            console.log(`Filtered to ${allMembers.length} members with signDate in range`);
-        }
-        
-        return allMembers;
-        
-    } catch (error) {
-        console.error('Error fetching from ABC:', error.message);
-        if (error.response) {
-            console.error('ABC API Response:', error.response.data);
-        }
-        throw new Error(`ABC API Error: ${error.response?.data?.message || error.message}`);
-    }
-}
-/**
- * Fetch cancelled/inactive members from ABC
- * @param {string} clubNumber - The club number
- * @param {string} startDate - Start date for memberStatusDate range
- * @param {string} endDate - End date for memberStatusDate range
- * @returns {Promise<Array>} Array of cancelled members
- */
-async function fetchCancelledMembersFromABC(clubNumber, startDate, endDate) {
-    try {
-        const url = `${ABC_API_URL}/${clubNumber}/members`;
-        
-        // Fetch all members using pagination
-        let allMembers = [];
-        let currentPage = 1;
-        let hasMorePages = true;
-        
-        console.log(`Fetching all members from ABC club ${clubNumber} with pagination...`);
-        
-        while (hasMorePages) {
-            const params = {
-                size: 5000,
-                page: currentPage
-            };
-            
-            console.log(`  Fetching page ${currentPage}...`);
-            
-            const response = await axios.get(url, {
-                headers: {
-                    'accept': 'application/json',
-                    'app_id': ABC_APP_ID,
-                    'app_key': ABC_APP_KEY
-                },
-                params: params
-            });
-            
-            const members = response.data.members || [];
-            allMembers = allMembers.concat(members);
-            
-            console.log(`  Page ${currentPage}: ${members.length} members`);
-            
-            // Check if there's a next page
-            const nextPage = response.data.status?.nextPage;
-            if (nextPage && members.length > 0) {
-                currentPage++;
-            } else {
-                hasMorePages = false;
-            }
-            
-            // Safety limit: stop after 50 pages (250,000 members max)
-            // This prevents infinite loops while supporting very large gym chains
-            if (currentPage > 50) {
-                console.log(`  ⚠️ Reached safety limit of 50 pages (250k members)`);
-                hasMorePages = false;
-            }
-        }
-        
-        console.log(`Total members fetched: ${allMembers.length}`);
-        
-        // Filter out prospects - only keep actual members
-        allMembers = allMembers.filter(member => {
-            return member.personal?.joinStatus === 'Member';
-        });
-        console.log(`Filtered to ${allMembers.length} actual members (excluding prospects)`);
-        
-        // Filter for inactive members (isActive can be boolean false or string "false")
-        allMembers = allMembers.filter(member => {
-            const isActive = member.personal?.isActive;
-            // Check for boolean false or string "false"
-            return isActive === false || isActive === 'false';
-        });
-        
-        console.log(`Filtered to ${allMembers.length} inactive members`);
-        
-        // Filter by memberStatusDate if date range provided
-        if (startDate && endDate) {
-            console.log(`Filtering by memberStatusDate between ${startDate} and ${endDate}`);
-            
-            allMembers = allMembers.filter(member => {
-                const statusDate = member.personal?.memberStatusDate;
-                if (!statusDate) return false;
-                
-                // Extract just the date part (YYYY-MM-DD)
-                // memberStatusDate format: "1997-08-13" or "1997-08-13T00:00:00"
-                const memberDate = statusDate.split('T')[0];
-                
-                // Check if date falls in range
-                return memberDate >= startDate && memberDate <= endDate;
-            });
-            
-            console.log(`Filtered to ${allMembers.length} with memberStatusDate in range`);
-        }
-        
-        // Log breakdown of statuses
-        const statusCounts = {};
-        allMembers.forEach(m => {
-            const status = m.personal?.memberStatus || 'Unknown';
-            statusCounts[status] = (statusCounts[status] || 0) + 1;
-        });
-        
-        console.log(`Final count by status:`);
-        Object.entries(statusCounts).forEach(([status, count]) => {
-            console.log(`  - ${status}: ${count}`);
-        });
-        
-        return allMembers;
-        
-    } catch (error) {
-        console.error('Error fetching cancelled members from ABC:', error.message);
-        if (error.response) {
-            console.error('ABC API Response:', error.response.data);
-        }
-        throw new Error(`ABC API Error: ${error.response?.data?.message || error.message}`);
-    }
-}
-
-/**
- * Fetch active members who are exactly 3 days past due
- * @param {string} clubNumber - The club number
- * @returns {Promise<Array>} Array of past due members
- */
-async function fetchOneDayPastDueMembers(clubNumber) {
-    try {
-        const url = `${ABC_API_URL}/${clubNumber}/members`;
-        
-        // Fetch all members using pagination
-        let allMembers = [];
-        let currentPage = 1;
-        let hasMorePages = true;
-        
-        console.log(`Fetching all members from ABC club ${clubNumber} with pagination...`);
-        
-        while (hasMorePages) {
-            const params = {
-                size: 5000,
-                page: currentPage
-            };
-            
-            console.log(`  Fetching page ${currentPage}...`);
-            
-            const response = await axios.get(url, {
-                headers: {
-                    'accept': 'application/json',
-                    'app_id': ABC_APP_ID,
-                    'app_key': ABC_APP_KEY
-                },
-                params: params
-            });
-            
-            const members = response.data.members || [];
-            allMembers = allMembers.concat(members);
-            
-            console.log(`  Page ${currentPage}: ${members.length} members`);
-            
-            // Check if there's a next page
-            const nextPage = response.data.status?.nextPage;
-            if (nextPage && members.length > 0) {
-                currentPage++;
-            } else {
-                hasMorePages = false;
-            }
-            
-            // Safety limit: stop after 50 pages (250,000 members max)
-            if (currentPage > 50) {
-                console.log(`  ⚠️ Reached safety limit of 50 pages (250k members)`);
-                hasMorePages = false;
-            }
-        }
-        
-        console.log(`Total members fetched: ${allMembers.length}`);
-        
-        // Filter out prospects - only keep actual members
-        allMembers = allMembers.filter(member => {
-            return member.personal?.joinStatus === 'Member';
-        });
-        console.log(`Filtered to ${allMembers.length} actual members (excluding prospects)`);
-        
-        // Filter for ACTIVE members only
-        allMembers = allMembers.filter(member => {
-            const isActive = member.personal?.isActive;
-            return isActive === true || isActive === 'true';
-        });
-        console.log(`Filtered to ${allMembers.length} ACTIVE members`);
-        
-        // Calculate today at midnight for consistent comparison
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        console.log(`\n=== PAST DUE ANALYSIS ===`);
-        console.log(`Today's date: ${today.toISOString().split('T')[0]}`);
-        console.log(`Looking for nextBillingDate: ${new Date(today - 3*24*60*60*1000).toISOString().split('T')[0]} (3 days ago)`);
-        
-        // First, let's see ALL members with past billing dates (for debugging)
-        const membersWithPastBillingDates = allMembers.filter(member => {
-            const nextBillingDate = member.agreement?.nextBillingDate;
-            if (!nextBillingDate) return false;
-            
-            const billingDate = new Date(nextBillingDate.split('T')[0]);
-            billingDate.setHours(0, 0, 0, 0);
-            
-            return billingDate < today;
-        });
-        
-        console.log(`\nTotal ACTIVE members with billing dates in the past: ${membersWithPastBillingDates.length}`);
-        
-        // Show breakdown of how many days past due
-        if (membersWithPastBillingDates.length > 0) {
-            const breakdown = {};
-            membersWithPastBillingDates.forEach(member => {
-                const billingDate = new Date(member.agreement.nextBillingDate.split('T')[0]);
-                billingDate.setHours(0, 0, 0, 0);
-                const daysDiff = Math.floor((today - billingDate) / (1000 * 60 * 60 * 24));
-                breakdown[daysDiff] = (breakdown[daysDiff] || 0) + 1;
-            });
-            
-            console.log(`\nBreakdown by days past due:`);
-            Object.keys(breakdown).sort((a, b) => a - b).forEach(days => {
-                console.log(`  ${days} day(s) past due: ${breakdown[days]} members`);
-            });
-        }
-        
-        // Now filter for exactly 3 days past due
-        const threeDaysPastDue = allMembers.filter(member => {
-            const nextBillingDate = member.agreement?.nextBillingDate;
-            if (!nextBillingDate) return false;
-            
-            const billingDate = new Date(nextBillingDate.split('T')[0]);
-            billingDate.setHours(0, 0, 0, 0);
-            
-            // Calculate days past due
-            const daysDiff = Math.floor((today - billingDate) / (1000 * 60 * 60 * 24));
-            
-            return daysDiff === 3;
-        });
-        
-        console.log(`\n✅ Found ${threeDaysPastDue.length} members exactly 3 days past due`);
-        
-        // Show sample of 3-days past due members
-        if (threeDaysPastDue.length > 0) {
-            console.log(`\nSample members (first 3):`);
-            threeDaysPastDue.slice(0, 3).forEach((member, i) => {
-                console.log(`  ${i + 1}. ${member.personal?.firstName} ${member.personal?.lastName}`);
-                console.log(`     Email: ${member.personal?.email}`);
-                console.log(`     Next Billing Date: ${member.agreement?.nextBillingDate}`);
-                console.log(`     isPastDue flag: ${member.agreement?.isPastDue}`);
-                console.log(`     Past Due Balance: $${member.agreement?.pastDueBalance || 0}`);
-            });
-        }
-        
-        return threeDaysPastDue;
-        
-    } catch (error) {
-        console.error('Error fetching past due members from ABC:', error.message);
-        if (error.response) {
-            console.error('ABC API Response:', error.response.data);
-        }
-        throw new Error(`ABC API Error: ${error.response?.data?.message || error.message}`);
-    }
-}
-
-/**
- * Fetch recurring services from ABC
- * @param {string} clubNumber - The club number
- * @param {string} startDate - Optional start date for filtering
- * @param {string} endDate - Optional end date for filtering
- * @param {string} serviceStatus - Optional status filter (Active/Inactive)
- * @param {string} filterType - 'sale' or 'inactive' to determine which date range to use
- * @returns {Promise<Array>} Array of recurring services
- */
-async function fetchRecurringServicesFromABC(clubNumber, startDate = null, endDate = null, serviceStatus = null, filterType = 'sale') {
-    try {
-        const url = `${ABC_API_URL}/${clubNumber}/members/recurringservices`;
-        
-        const params = {};
-        
-        // Filter by sale date or inactive date
-        if (startDate && endDate) {
-            if (filterType === 'sale') {
-                params.saleTimestampRange = `${startDate},${endDate}`;
-            } else if (filterType === 'inactive') {
-                params.lastModifiedTimestampRange = `${startDate},${endDate}`;
-            }
-        }
-        
-        if (serviceStatus) {
-            params.serviceStatus = serviceStatus;
-        }
-        
-        console.log(`Fetching recurring services from ABC: ${url}`, params);
-        
+        const url = `${ABC_API_URL}${endpoint}`;
         const response = await axios.get(url, {
-            headers: {
-                'accept': 'application/json',
-                'app_id': ABC_APP_ID,
-                'app_key': ABC_APP_KEY
+            params: {
+                ...params,
+                app_id: ABC_APP_ID,
+                app_key: ABC_APP_KEY
             },
-            params: params
+            timeout: 30000
         });
-        
-        const services = response.data.recurringServices || [];
-        
-        // FILTER OUT 'FULL ACCESS EUG SPRING' - this is NOT a PT service
-        const filteredServices = services.filter(service => {
-            return service.serviceItem !== 'FULL ACCESS EUG SPRING';
-        });
-        
-        console.log(`Fetched ${services.length} total services, filtered to ${filteredServices.length} (excluded 'FULL ACCESS EUG SPRING')`);
-        return filteredServices;
-        
+        return response.data;
     } catch (error) {
-        console.error('Error fetching recurring services from ABC:', error.message);
+        console.error('ABC API Error:', error.message);
         if (error.response) {
-            console.error('ABC API Response:', error.response.data);
+            console.error('Response status:', error.response.status);
+            console.error('Response data:', error.response.data);
         }
-        throw new Error(`ABC API Error: ${error.response?.data?.message || error.message}`);
-    }
-}
-
-/**
- * Search for contact in GHL by name
- * @param {string} firstName - First name
- * @param {string} lastName - Last name
- * @returns {Promise<Object|null>} Contact object or null if not found
- */
-async function searchGHLByName(firstName, lastName) {
-    try {
-        const headers = {
-            'Authorization': `Bearer ${GHL_API_KEY}`,
-            'Version': '2021-07-28',
-            'Content-Type': 'application/json'
-        };
-        
-        // Search by full name
-        const searchQuery = `${firstName} ${lastName}`;
-        console.log(`Searching GHL for: ${searchQuery}`);
-        
-        const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
-            headers: headers,
-            params: { 
-                locationId: ghlLocationId,
-                query: searchQuery
-            }
-        });
-        
-        if (!searchResponse.data?.contacts?.length) {
-            console.log(`❌ No contacts found for ${searchQuery}`);
-            return null;
-        }
-        
-        const contacts = searchResponse.data.contacts;
-        console.log(`Found ${contacts.length} potential matches for ${searchQuery}`);
-        
-        // Try to find exact name match (case insensitive)
-        const exactMatch = contacts.find(c => 
-            c.firstName?.toLowerCase() === firstName.toLowerCase() &&
-            c.lastName?.toLowerCase() === lastName.toLowerCase()
-        );
-        
-        if (exactMatch) {
-            console.log(`✅ Found exact match: ${exactMatch.firstName} ${exactMatch.lastName} (${exactMatch.email})`);
-            return exactMatch;
-        }
-        
-        // If no exact match but only one result, use it
-        if (contacts.length === 1) {
-            console.log(`✅ Using single result: ${contacts[0].firstName} ${contacts[0].lastName} (${contacts[0].email})`);
-            return contacts[0];
-        }
-        
-        // Multiple contacts but no exact match
-        console.log(`⚠️ Multiple contacts found but no exact match`);
-        return null;
-        
-    } catch (error) {
-        console.error(`Error searching GHL for ${firstName} ${lastName}:`, error.message);
-        return null;
-    }
-}
-
-/**
- * Add tag to existing contact in GHL by contact ID
- * @param {string} contactId - GHL Contact ID
- * @param {string} tag - Tag to add
- * @param {Array} existingTags - Existing tags array
- * @returns {Promise<Object>} Result object
- */
-async function addTagToContactById(contactId, tag, existingTags = []) {
-    try {
-        const headers = {
-            'Authorization': `Bearer ${GHL_API_KEY}`,
-            'Version': '2021-07-28',
-            'Content-Type': 'application/json'
-        };
-        
-        // Check if tag already exists
-        if (existingTags.includes(tag)) {
-            console.log(`Tag '${tag}' already exists on contact ${contactId}`);
-            return { action: 'already_tagged' };
-        }
-        
-        // Add new tag
-        const updatedTags = [...existingTags, tag];
-        
-        const updateUrl = `${GHL_API_URL}/contacts/${contactId}`;
-        await axios.put(updateUrl, {
-            tags: updatedTags
-        }, { headers: headers });
-        
-        console.log(`✅ Added '${tag}' tag to contact ${contactId}`);
-        return { action: 'tagged' };
-        
-    } catch (error) {
-        console.error(`Error adding tag to contact ${contactId}:`, error.message);
         throw error;
     }
 }
 
 /**
- * Fetch a single member's details from ABC by member ID
- * @param {string} clubNumber - The club number
- * @param {string} memberId - The member ID
- * @returns {Promise<Object>} Member object
+ * Make GHL API request
  */
-async function fetchMemberByIdFromABC(clubNumber, memberId) {
+async function makeGHLRequest(method, endpoint, data = null, accessToken) {
     try {
-        console.log(`\n=== Fetching Member ${memberId} ===`);
+        const url = `${GHL_API_URL}${endpoint}`;
+        const config = {
+            method: method,
+            url: url,
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'Version': '2021-07-28'
+            },
+            timeout: 30000
+        };
         
-        // METHOD 1: Try direct member endpoint
-        console.log(`Method 1: Direct endpoint /members/${memberId}`);
-        try {
-            const directUrl = `${ABC_API_URL}/${clubNumber}/members/${memberId}`;
-            const directResponse = await axios.get(directUrl, {
-                headers: {
-                    'accept': 'application/json',
-                    'app_id': ABC_APP_ID,
-                    'app_key': ABC_APP_KEY
-                }
-            });
-            
-            console.log(`Direct endpoint response status: ${directResponse.status}`);
-            
-            // Check different response formats
-            let member = null;
-            if (directResponse.data.member) {
-                member = directResponse.data.member;
-            } else if (directResponse.data.members && directResponse.data.members.length > 0) {
-                member = directResponse.data.members[0];
-            } else if (directResponse.data.memberId) {
-                member = directResponse.data;
-            }
-            
-            if (member && member.memberId) {
-                console.log(`✅ SUCCESS via direct endpoint`);
-                console.log(`   Member: ${member.personal?.firstName} ${member.personal?.lastName}`);
-                console.log(`   Email: ${member.personal?.email}`);
-                console.log(`   MemberId match: ${member.memberId === memberId}`);
-                return member;
-            }
-        } catch (directError) {
-            console.log(`❌ Direct endpoint failed: ${directError.response?.status || directError.message}`);
+        if (data) {
+            config.data = data;
         }
         
-        // METHOD 2: Try query parameter
-        console.log(`Method 2: Query parameter ?memberId=${memberId}`);
-        const queryUrl = `${ABC_API_URL}/${clubNumber}/members`;
-        const queryResponse = await axios.get(queryUrl, {
-            headers: {
-                'accept': 'application/json',
-                'app_id': ABC_APP_ID,
-                'app_key': ABC_APP_KEY
-            },
-            params: {
-                memberId: memberId
-            }
-        });
+        const response = await axios(config);
+        return response.data;
+    } catch (error) {
+        console.error('GHL API Error:', error.message);
+        if (error.response) {
+            console.error('Response status:', error.response.status);
+            console.error('Response data:', JSON.stringify(error.response.data));
+        }
+        throw error;
+    }
+}
+
+/**
+ * Search for contact in GHL by member ID
+ */
+async function findContactByMemberId(memberId, locationId, accessToken) {
+    try {
+        const searchResult = await makeGHLRequest(
+            'GET',
+            `/contacts/?locationId=${locationId}&query=${memberId}`,
+            null,
+            accessToken
+        );
         
-        const members = queryResponse.data.members || [];
-        console.log(`Query returned ${members.length} members`);
-        
-        if (members.length > 0) {
-            // Log first 3 memberIds to see what we got
-            console.log(`Sample memberIds returned:`);
-            members.slice(0, 3).forEach((m, i) => {
-                console.log(`  ${i + 1}. ${m.memberId} - ${m.personal?.firstName} ${m.personal?.lastName}`);
+        if (searchResult.contacts && searchResult.contacts.length > 0) {
+            // Look for exact match on member_id custom field
+            const exactMatch = searchResult.contacts.find(contact => {
+                return contact.customFields && 
+                       contact.customFields.find(field => 
+                           field.id === 'member_id' && field.value === memberId.toString()
+                       );
             });
             
-            // Try exact match
-            const exactMatch = members.find(m => m.memberId === memberId);
             if (exactMatch) {
-                console.log(`✅ SUCCESS via exact match`);
-                console.log(`   Member: ${exactMatch.personal?.firstName} ${exactMatch.personal?.lastName}`);
-                console.log(`   Email: ${exactMatch.personal?.email}`);
                 return exactMatch;
             }
             
-            // If only one result, use it
-            if (members.length === 1) {
-                console.log(`⚠️ No exact match, but only 1 result - using it`);
-                console.log(`   Looking for: ${memberId}`);
-                console.log(`   Got: ${members[0].memberId}`);
-                console.log(`   Member: ${members[0].personal?.firstName} ${members[0].personal?.lastName}`);
-                return members[0];
+            // Fallback to first result if no exact match
+            return searchResult.contacts[0];
+        }
+        
+        return null;
+    } catch (error) {
+        console.error(`Error searching for member ${memberId}:`, error.message);
+        return null;
+    }
+}
+
+/**
+ * Format date for GHL (YYYY-MM-DD)
+ */
+function formatDateForGHL(dateString) {
+    if (!dateString) return null;
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return null;
+        return date.toISOString().split('T')[0];
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
+ * Create or update contact in GHL
+ */
+async function createOrUpdateContact(member, club, existingContact = null) {
+    try {
+        // Get the current date in YYYY-MM-DD format for syncing
+        const currentDate = new Date().toISOString().split('T')[0];
+        
+        // Prepare contact data
+        const contactData = {
+            locationId: club.ghlLocationId,
+            firstName: member.firstName || '',
+            lastName: member.lastName || '',
+            email: member.email || '',
+            phone: member.homePhone || member.mobilePhone || '',
+            source: 'ABC Financial',
+            customFields: []
+        };
+        
+        // Add custom fields - ALWAYS include these fields with current values
+        const customFields = {
+            'member_id': member.memberId?.toString() || '',
+            'club_number': club.clubNumber?.toString() || '',
+            'club_name': club.clubName || '',
+            'membership_type': member.agreementType || '',
+            'membership_status': member.status || '',
+            'sign_date': formatDateForGHL(member.signDate) || '',
+            'abc_last_sync': currentDate  // ALWAYS update this field
+        };
+        
+        // Convert to GHL format
+        for (const [key, value] of Object.entries(customFields)) {
+            if (value !== null && value !== undefined) {
+                contactData.customFields.push({
+                    id: key,
+                    field_value: value
+                });
             }
         }
         
-        throw new Error(`Member ${memberId} not found via any method`);
-        
+        if (existingContact) {
+            // Update existing contact
+            console.log(`   Updating contact ${existingContact.id} for member ${member.memberId}`);
+            await makeGHLRequest(
+                'PUT',
+                `/contacts/${existingContact.id}`,
+                contactData,
+                club.ghlAccessToken
+            );
+            return { action: 'updated', contactId: existingContact.id };
+        } else {
+            // Create new contact
+            console.log(`   Creating new contact for member ${member.memberId}`);
+            const result = await makeGHLRequest(
+                'POST',
+                '/contacts/',
+                contactData,
+                club.ghlAccessToken
+            );
+            return { action: 'created', contactId: result.contact?.id };
+        }
     } catch (error) {
-        console.error(`❌ FAILED to fetch member ${memberId}`);
-        console.error(`Error: ${error.message}`);
+        console.error(`   Error creating/updating contact for member ${member.memberId}:`, error.message);
         throw error;
     }
 }
 
 /**
- * Add or update a contact in GoHighLevel
- * @param {Object} member - Member data from ABC
- * @param {string} customTag - Optional custom tag to add (default: 'sale')
- * @param {string} serviceEmployee - Optional service employee name for PT clients
- * @returns {Promise<Object>} GHL response
+ * Add tag to contact in GHL
  */
-async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 'sale', serviceEmployee = null) {
+async function addTagToContact(contactId, tagName, locationId, accessToken) {
     try {
-        // Map ABC member data to GHL contact format
-        const personal = member.personal || {};
-        const agreement = member.agreement || {};
-        
-        const contactData = {
-            locationId: ghlLocationId,
-            firstName: personal.firstName || '',
-            lastName: personal.lastName || '',
-            email: personal.email || '',
-            phone: personal.primaryPhone || personal.mobilePhone || '',
-            address1: personal.addressLine1 || '',
-            city: personal.city || '',
-            state: personal.state || '',
-            postalCode: personal.postalCode || '',
-            country: personal.countryCode || '',
-            tags: [customTag], // Add custom tag
-            // Add custom fields
-            customFields: [
-                { key: 'abc_member_id', value: member.memberId || '' },
-                { key: 'abc_club_number', value: personal.homeClub || '' },
-                { key: 'barcode', value: personal.barcode || '' },
-                { key: 'birth_date', value: personal.birthDate || '' },
-                { key: 'gender', value: personal.gender || '' },
-                { key: 'member_status', value: personal.memberStatus || '' },
-                { key: 'join_status', value: personal.joinStatus || '' },
-                { key: 'membership_type', value: agreement.membershipType || '' },
-                { key: 'payment_plan', value: agreement.paymentPlan || '' },
-                { key: 'agreement_number', value: agreement.agreementNumber || '' },
-                { key: 'sales_person', value: agreement.salesPersonName || '' },
-                { key: 'converted_date', value: agreement.convertedDate || '' },
-                { key: 'member_sign_date', value: agreement.signDate || '' },
-                { key: 'next_billing_date', value: agreement.nextBillingDate || '' },
-                { key: 'is_past_due', value: agreement.isPastDue || '' },
-                { key: 'total_check_in_count', value: personal.totalCheckInCount || '' },
-                { key: 'last_check_in', value: personal.lastCheckInTimestamp || '' },
-                ...(serviceEmployee ? [{ key: 'service_employee', value: serviceEmployee }] : []),
-                ...(member.ptSignDate ? [{ key: 'pt_sign_date', value: member.ptSignDate }] : []),
-                ...(member.ptDeactivateDate ? [{ key: 'pt_deactivate_date', value: member.ptDeactivateDate }] : [])
-            ]
-        };
-        
-        const headers = {
-            'Authorization': `Bearer ${ghlApiKey}`,
-            'Version': '2021-07-28',
-            'Content-Type': 'application/json'
-        };
-        
-        // First, search for existing contact by email using duplicate check endpoint
-        let contactExists = false;
-        let existingContactId = null;
-
-        try {
-            // Use GHL's duplicate check endpoint (more reliable)
-            const searchUrl = `${GHL_API_URL}/contacts/search/duplicate`;
-            const searchResponse = await axios.post(
-                searchUrl,
-                {
-                    locationId: ghlLocationId,
-                    email: contactData.email
-                },
-                { headers: headers }
-            );
-            
-            // Check if we found the contact
-            if (searchResponse.data && searchResponse.data.contact) {
-                contactExists = true;
-                existingContactId = searchResponse.data.contact.id;
-                console.log(`Found existing contact: ${contactData.email} (ID: ${existingContactId})`);
-            }
-        } catch (searchError) {
-            // If search fails, contact might not exist - we'll try to create
-            console.log(`Contact search failed for ${contactData.email}, will try to create`);
-}
-        
-        // Update or Create contact
-        if (contactExists && existingContactId) {
-            // UPDATE existing contact - REMOVE locationId for update
-            try {
-                // First, get existing contact to preserve tags
-                const getUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
-                const existingContact = await axios.get(getUrl, { headers: headers });
-                
-                // Get existing tags and add custom tag if not present
-                let existingTags = existingContact.data?.contact?.tags || [];
-                if (!existingTags.includes(customTag)) {
-                    existingTags.push(customTag);
-                }
-                
-                const updateData = { ...contactData };
-                delete updateData.locationId; // locationId not allowed in update
-                updateData.tags = existingTags; // Use combined tags
-                
-                const updateUrl = `${GHL_API_URL}/contacts/${existingContactId}`;
-                const response = await axios.put(updateUrl, updateData, { headers: headers });
-                console.log(`✅ Updated contact in GHL: ${contactData.email} (added '${customTag}' tag)`);
-                return { action: 'updated', contact: response.data };
-            } catch (updateError) {
-                console.error(`Update failed for ${contactData.email}:`, updateError.response?.data);
-                throw updateError;
-            }
-            
-        } else {
-            // CREATE new contact - locationId IS required here
-            try {
-                const createUrl = `${GHL_API_URL}/contacts/`;
-                const response = await axios.post(createUrl, contactData, { headers: headers });
-                console.log(`✅ Created contact in GHL: ${contactData.email} (with '${customTag}' tag)`);
-                return { action: 'created', contact: response.data };
-                
-            } catch (createError) {
-                // If create fails with duplicate error, try to find and update
-                if (createError.response?.data?.message?.includes('duplicated') || 
-                    createError.response?.data?.message?.includes('duplicate')) {
-                    
-                    console.log(`Duplicate detected for ${contactData.email}, searching again...`);
-                    
-                    // Check if GHL provided the contactId in the error (phone duplicate case)
-                    const duplicateContactId = createError.response?.data?.meta?.contactId;
-                    
-                    if (duplicateContactId) {
-                        // GHL told us the exact contact ID - use it directly
-                        try {
-                            console.log(`Found duplicate contact ID from error: ${duplicateContactId}`);
-                            
-                            // Get the existing contact
-                            const getUrl = `${GHL_API_URL}/contacts/${duplicateContactId}`;
-                            const existingContact = await axios.get(getUrl, { headers: headers });
-                            
-                            // Get existing tags and add new tag
-                            let existingTags = existingContact.data?.contact?.tags || [];
-                            if (!existingTags.includes(customTag)) {
-                                existingTags.push(customTag);
-                            }
-                            
-                            const updateData = { ...contactData };
-                            delete updateData.locationId; // Remove for update
-                            updateData.tags = existingTags; // Use combined tags
-                            
-                            const updateUrl = `${GHL_API_URL}/contacts/${duplicateContactId}`;
-                            const response = await axios.put(updateUrl, updateData, { headers: headers });
-                            console.log(`✅ Updated duplicate contact (matched by ${createError.response?.data?.meta?.matchingField}): ${contactData.email}`);
-                            return { action: 'updated', contact: response.data };
-                        } catch (updateError) {
-                            console.error(`Failed to update duplicate contact: ${updateError.message}`);
-                        }
-                    }
-                    
-                    // Fallback: Try a more thorough search
-                    try {
-                        const retrySearch = await axios.get(`${GHL_API_URL}/contacts/`, {
-                            headers: headers,
-                            params: { 
-                                locationId: ghlLocationId,
-                                query: contactData.email
-                            }
-                        });
-                        
-                        if (retrySearch.data?.contacts?.length > 0) {
-                            const foundContact = retrySearch.data.contacts[0];
-                            
-                            // Get existing tags
-                            let existingTags = foundContact.tags || [];
-                            if (!existingTags.includes(customTag)) {
-                                existingTags.push(customTag);
-                            }
-                            
-                            const updateData = { ...contactData };
-                            delete updateData.locationId; // Remove for update
-                            updateData.tags = existingTags; // Use combined tags
-                            
-                            const updateUrl = `${GHL_API_URL}/contacts/${foundContact.id}`;
-                            const response = await axios.put(updateUrl, updateData, { headers: headers });
-                            console.log(`✅ Updated existing duplicate: ${contactData.email} (added '${customTag}' tag)`);
-                            return { action: 'updated', contact: response.data };
-                        }
-                    } catch (retryError) {
-                        console.error(`Failed to handle duplicate for ${contactData.email}`);
-                    }
-                }
-                
-                throw createError;
-            }
-        } // Close else block
-        
+        await makeGHLRequest(
+            'POST',
+            `/contacts/${contactId}/tags`,
+            { tags: [tagName] },
+            accessToken
+        );
+        console.log(`   ✅ Added tag "${tagName}" to contact ${contactId}`);
+        return true;
     } catch (error) {
-        console.error('Error syncing to GHL:', error.message);
-        if (error.response) {
-            console.error('GHL API Response:', error.response.data);
-        }
-        throw new Error(`GHL API Error: ${error.response?.data?.message || error.message}`);
+        console.error(`   ❌ Error adding tag to contact ${contactId}:`, error.message);
+        return false;
     }
 }
 
 /**
- * Add tag to existing contact in GHL (for recurring services)
- * @param {string} memberEmail - Email of the member
- * @param {string} ghlApiKey - GHL API Key
- * @param {string} ghlLocationId - GHL Location ID
- * @param {string} customTag - Tag to add
- * @param {Array} customFields - Optional custom fields to update
- * @returns {Promise<Object>} GHL response
+ * Update custom field date on contact
  */
-async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag, customFields = []) {
+async function updateContactDateField(contactId, fieldId, date, locationId, accessToken) {
     try {
-        const headers = {
-            'Authorization': `Bearer ${ghlApiKey}`,
-            'Version': '2021-07-28',
-            'Content-Type': 'application/json'
-        };
+        const currentDate = new Date().toISOString().split('T')[0];
         
-        // Search for contact by email
-        const searchResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
-            headers: headers,
-            params: { 
-                locationId: ghlLocationId,
-                query: memberEmail
-            }
-        });
-        
-        if (!searchResponse.data?.contacts?.length) {
-            console.log(`⚠️ Contact not found in GHL: ${memberEmail}`);
-            return { action: 'not_found', email: memberEmail };
-        }
-        
-        // Find exact email match
-        const exactMatch = searchResponse.data.contacts.find(
-            c => c.email && c.email.toLowerCase() === memberEmail.toLowerCase()
-        );
-        
-        if (!exactMatch) {
-            console.log(`⚠️ No exact match for email: ${memberEmail}`);
-            return { action: 'not_found', email: memberEmail };
-        }
-        
-        // Get existing tags
-        let existingTags = exactMatch.tags || [];
-        
-        // Check if tag already exists
-        if (existingTags.includes(customTag)) {
-            console.log(`Tag '${customTag}' already exists for ${memberEmail}`);
-            return { action: 'already_tagged', contact: exactMatch };
-        }
-        
-        // Add new tag
-        existingTags.push(customTag);
-        
-        // Prepare update data
-        const updateData = {
-            tags: existingTags
-        };
-        
-        // Add custom fields if provided
-        if (customFields && customFields.length > 0) {
-            updateData.customFields = customFields;
-        }
-        
-        // Update contact with new tag and custom fields
-        const updateUrl = `${GHL_API_URL}/contacts/${exactMatch.id}`;
-        const response = await axios.put(updateUrl, updateData, { headers: headers });
-        
-        console.log(`✅ Added '${customTag}' tag to contact: ${memberEmail}`);
-        return { action: 'tagged', contact: response.data };
-        
-    } catch (error) {
-        console.error(`Error adding tag to ${memberEmail}:`, error.message);
-        throw new Error(`GHL API Error: ${error.response?.data?.message || error.message}`);
-    }
-}
-
-// ====================================
-// API ENDPOINTS
-// ====================================
-
-// Home endpoint
-app.get('/', (req, res) => {
-    const enabledClubs = clubsConfig.clubs.filter(c => c.enabled !== false);
-    
-    res.json({
-        message: 'ABC to GHL Member Sync Server',
-        status: 'running',
-        features: {
-            multiClubSync: 'Syncs all configured clubs at once',
-            autoYesterdaySync: 'Automatically syncs members who signed yesterday',
-            membershipFiltering: 'Excludes NON-MEMBER and Employee types',
-            autoTagging: 'Adds appropriate tags to all synced contacts',
-            customFields: 'Syncs 15+ fields including membership type and sign date',
-            cancelledTracking: 'Tracks members who cancel',
-            ptTracking: 'Tracks PT service activations and deactivations'
-        },
-        endpoints: {
-            'GET /': 'This message',
-            'GET /api/health': 'Health check',
-            'GET /api/debug-abc': 'Debug - see raw ABC member data',
-            'POST /api/sync': 'Sync new members for ALL clubs (tag: sale)',
-            'POST /api/sync-cancelled': 'Sync cancelled members (tag: cancelled / past member)',
-            'POST /api/sync-past-due': 'Sync 3-day past due ACTIVE members (tag: past due)',
-            'POST /api/sync-pt-new': 'Sync new PT services (tag: pt current)',
-            'POST /api/sync-pt-deactivated': 'Sync deactivated PT (tag: ex pt)',
-            'GET /api/test-abc': 'Test ABC API connection',
-            'GET /api/test-ghl': 'Test GHL API connection'
-        },
-        configuration: {
-            abc_api: ABC_APP_ID && ABC_APP_KEY ? 'configured' : 'NOT CONFIGURED',
-            clubs_loaded: clubsConfig.clubs.length,
-            clubs_enabled: enabledClubs.length,
-            clubs: enabledClubs.map(c => ({ name: c.clubName, number: c.clubNumber }))
-        }
-    });
-});
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        apis: {
-            abc: ABC_APP_ID && ABC_APP_KEY ? 'configured' : 'missing',
-            ghl: GHL_API_KEY && GHL_LOCATION_ID ? 'configured' : 'missing'
-        }
-    });
-});
-
-// Debug endpoint - see raw ABC member data to understand field values
-app.get('/api/debug-abc', async (req, res) => {
-    const { clubNumber = '30935', limit = 10 } = req.query;
-    
-    try {
-        const url = `${ABC_API_URL}/${clubNumber}/members`;
-        
-        console.log('Fetching sample members from ABC for debugging...');
-        
-        const response = await axios.get(url, {
-            headers: {
-                'accept': 'application/json',
-                'app_id': ABC_APP_ID,
-                'app_key': ABC_APP_KEY
+        // Update the contact with both the specific date field AND the last sync date
+        await makeGHLRequest(
+            'PUT',
+            `/contacts/${contactId}`,
+            {
+                locationId: locationId,
+                customFields: [
+                    {
+                        id: fieldId,
+                        field_value: date
+                    },
+                    {
+                        id: 'abc_last_sync',
+                        field_value: currentDate
+                    }
+                ]
             },
-            params: {
-                size: limit
-            }
-        });
-        
-        const members = response.data.members || [];
-        
-        // Return key fields so we can see what values ABC uses
-        res.json({
-            success: true,
-            totalReturned: members.length,
-            members: members.map(m => ({
-                memberId: m.memberId,
-                name: `${m.personal?.firstName} ${m.personal?.lastName}`,
-                email: m.personal?.email,
-                // Status fields - let's see what values these have
-                isActive: m.personal?.isActive,
-                memberStatus: m.personal?.memberStatus,
-                memberStatusDate: m.personal?.memberStatusDate,
-                memberStatusReason: m.personal?.memberStatusReason,
-                joinStatus: m.personal?.joinStatus,
-                // Dates
-                convertedDate: m.agreement?.convertedDate,
-                signDate: m.agreement?.signDate,
-                membershipType: m.agreement?.membershipType
-            }))
-        });
-        
+            accessToken
+        );
+        console.log(`   ✅ Updated ${fieldId} to ${date} for contact ${contactId}`);
+        return true;
     } catch (error) {
-        console.error('Debug endpoint error:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        console.error(`   ❌ Error updating date field for contact ${contactId}:`, error.message);
+        return false;
     }
-});
-
-// Test ABC API connection
-app.get('/api/test-abc', async (req, res) => {
-    const { clubNumber } = req.query;
-    
-    if (!ABC_APP_ID || !ABC_APP_KEY) {
-        return res.status(500).json({ 
-            error: 'ABC_APP_ID and ABC_APP_KEY not configured',
-            configured: {
-                app_id: ABC_APP_ID ? 'yes' : 'no',
-                app_key: ABC_APP_KEY ? 'yes' : 'no'
-            }
-        });
-    }
-    
-    if (!clubNumber) {
-        return res.status(400).json({ error: 'clubNumber parameter required' });
-    }
-    
-    try {
-        const members = await fetchMembersFromABC(clubNumber);
-        res.json({
-            success: true,
-            message: 'ABC API connection successful',
-            memberCount: members.length || 0,
-            sample: members[0] || null
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// Test GHL API connection with detailed diagnostics
-app.get('/api/test-ghl', async (req, res) => {
-    if (!GHL_API_KEY) {
-        return res.status(500).json({ error: 'GHL_API_KEY not configured' });
-    }
-    
-    if (!GHL_LOCATION_ID) {
-        return res.status(500).json({ 
-            error: 'GHL_LOCATION_ID not configured',
-            message: 'Please add your GHL Location ID as environment variable'
-        });
-    }
-    
-    try {
-        const testUrl = `${GHL_API_URL}/contacts/`;
-        const headers = {
-            'Authorization': `Bearer ${GHL_API_KEY}`,
-            'Version': '2021-07-28',
-            'Content-Type': 'application/json'
-        };
-        const params = { 
-            locationId: ghlLocationId,
-            limit: 1 
-        };
-        
-        console.log('Testing GHL API...');
-        console.log('URL:', testUrl);
-        console.log('Headers:', { ...headers, Authorization: `Bearer ${GHL_API_KEY.substring(0, 20)}...` });
-        console.log('Params:', params);
-        
-        const response = await axios.get(testUrl, {
-            headers: headers,
-            params: params
-        });
-        
-        res.json({
-            success: true,
-            message: 'GHL API connection successful',
-            locationId: ghlLocationId,
-            contactCount: response.data.contacts?.length || 0
-        });
-        
-    } catch (error) {
-        // Detailed error information
-        const errorDetails = {
-            success: false,
-            error: error.message,
-            statusCode: error.response?.status,
-            statusText: error.response?.statusText,
-            ghlError: error.response?.data,
-            requestInfo: {
-                url: `${GHL_API_URL}/contacts/`,
-                locationId: ghlLocationId,
-                keyPrefix: GHL_API_KEY.substring(0, 20) + '...',
-                keyLength: GHL_API_KEY.length
-            }
-        };
-        
-        console.error('GHL API Test Failed:', JSON.stringify(errorDetails, null, 2));
-        
-        res.status(500).json(errorDetails);
-    }
-});
-
-// Main sync endpoint - syncs ALL clubs at once
-app.post('/api/sync', async (req, res) => {
-    let { startDate, endDate } = req.body;
-    
-    // Validate required configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY) {
-        return res.status(500).json({
-            error: 'ABC API keys not configured',
-            abc_app_id: ABC_APP_ID ? 'ok' : 'missing',
-            abc_app_key: ABC_APP_KEY ? 'ok' : 'missing'
-        });
-    }
-    
-    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
-        return res.status(500).json({
-            error: 'No clubs configured in clubs-config.json'
-        });
-    }
-    
-    // Calculate last 3 days if no dates provided
-if (!startDate && !endDate) {
-    const today = new Date();
-    const end = new Date(today);
-    end.setDate(end.getDate() - 1); // Yesterday
-    const start = new Date(today);
-    start.setDate(start.getDate() - 3); // 3 days ago
-    startDate = start.toISOString().split('T')[0];
-    endDate = end.toISOString().split('T')[0];
-    console.log(`Auto-set to last 3 days: ${startDate} to ${endDate}`);
 }
+
+/**
+ * Sync new members endpoint
+ */
+app.post('/api/sync-new', async (req, res) => {
+    console.log('🔄 Starting new members sync...');
+    
+    const results = {
+        totalClubs: 0,
+        totalMembers: 0,
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        errors: 0,
+        clubs: []
+    };
     
     try {
-        const results = {
-            totalClubs: 0,
-            totalMembers: 0,
-            created: 0,
-            updated: 0,
-            skipped: 0,
-            errors: 0,
-            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : 'all time',
-            clubs: []
-        };
-        
-        // Excluded membership types
-        const excludedMembershipTypes = ['NON-MEMBER', 'Employee'];
-        
-        // Process each enabled club
         const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
         results.totalClubs = enabledClubs.length;
         
-        console.log(`\n🏢 Processing ${enabledClubs.length} clubs...`);
+        // Calculate date range - yesterday only
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startDate = yesterday.toISOString().split('T')[0];
+        results.dateRange = startDate;
+        
+        console.log(`📅 Date Range: ${startDate}`);
+        console.log(`🏢 Processing ${enabledClubs.length} clubs...\n`);
         
         for (const club of enabledClubs) {
-            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            console.log(`\n📍 Processing ${club.clubName} (${club.clubNumber})...`);
+            
             const clubResult = {
                 clubNumber: club.clubNumber,
                 clubName: club.clubName,
@@ -1439,44 +550,35 @@ if (!startDate && !endDate) {
                 created: 0,
                 updated: 0,
                 skipped: 0,
-                skippedMembers: [],
-                errors: [],
-                startTime: new Date().toISOString()
+                errors: 0
             };
             
             try {
-                // Fetch members from ABC
-                const members = await fetchMembersFromABC(club.clubNumber, startDate, endDate);
-                clubResult.members = members.length || 0;
-                results.totalMembers += clubResult.members;
+                // Fetch members with signDate parameter
+                console.log(`   Fetching members with signDate >= ${startDate}...`);
+                const membersData = await makeABCRequest('/members', {
+                    club_number: club.clubNumber,
+                    signDate: startDate,  // Use signDate parameter
+                    limit: 1000
+                });
                 
-                console.log(`Fetched ${members.length} members from ABC`);
+                const members = membersData.members || [];
+                clubResult.members = members.length;
+                results.totalMembers += members.length;
                 
-                // Sync each member to GHL using this club's credentials
+                console.log(`   Found ${members.length} new members`);
+                
                 for (const member of members) {
                     try {
-                        const membershipType = member.agreement?.membershipType || '';
-                        
-                        // FILTER: Skip excluded membership types
-                        if (excludedMembershipTypes.includes(membershipType)) {
-                            console.log(`Skipping member ${member.personal?.email || member.memberId} - Membership type: ${membershipType}`);
-                            clubResult.skipped++;
-                            results.skipped++;
-                            clubResult.skippedMembers.push({
-                                email: member.personal?.email,
-                                name: `${member.personal?.firstName} ${member.personal?.lastName}`,
-                                membershipType: membershipType,
-                                reason: 'Excluded membership type'
-                            });
-                            continue;
-                        }
-                        
-                        // Pass club-specific GHL credentials
-                        const result = await syncContactToGHL(
-                            member, 
-                            club.ghlApiKey, 
-                            club.ghlLocationId
+                        // Search for existing contact
+                        const existingContact = await findContactByMemberId(
+                            member.memberId,
+                            club.ghlLocationId,
+                            club.ghlAccessToken
                         );
+                        
+                        // Create or update contact
+                        const result = await createOrUpdateContact(member, club, existingContact);
                         
                         if (result.action === 'created') {
                             clubResult.created++;
@@ -1486,101 +588,78 @@ if (!startDate && !endDate) {
                             results.updated++;
                         }
                         
-                    } catch (memberError) {
-                        clubResult.errors.push({
-                            member: member.personal?.email || member.memberId,
-                            error: memberError.message
-                        });
+                        // Add delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                    } catch (error) {
+                        console.error(`   ❌ Error processing member ${member.memberId}:`, error.message);
+                        clubResult.errors++;
                         results.errors++;
                     }
                 }
                 
-            } catch (clubError) {
-                clubResult.errors.push({
-                    error: clubError.message
-                });
+                console.log(`   ✅ ${club.clubName} complete: ${clubResult.created} created, ${clubResult.updated} updated, ${clubResult.errors} errors`);
+                
+            } catch (error) {
+                console.error(`   ❌ Error processing club ${club.clubName}:`, error.message);
+                clubResult.errors++;
                 results.errors++;
             }
             
-            clubResult.endTime = new Date().toISOString();
             results.clubs.push(clubResult);
         }
         
-        console.log('\n=== ALL CLUBS SYNC COMPLETE ===');
-        console.log(`Total Clubs: ${results.totalClubs}`);
-        console.log(`Total Members: ${results.totalMembers}`);
-        console.log(`Created: ${results.created}`);
-        console.log(`Updated: ${results.updated}`);
-        console.log(`Skipped: ${results.skipped}`);
-        console.log(`Errors: ${results.errors}`);
+        console.log('\n✅ New members sync complete!');
+        console.log(`📊 Total: ${results.totalMembers} members, ${results.created} created, ${results.updated} updated, ${results.errors} errors`);
         
         res.json({
             success: true,
-            message: 'Multi-club sync completed',
+            message: 'New members sync completed successfully',
             results: results,
             timestamp: new Date().toISOString()
         });
         
     } catch (error) {
-        console.error('Sync error:', error);
+        console.error('❌ New members sync failed:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            results: results
         });
     }
 });
 
-// Sync specific club (simplified endpoint)
-// Sync cancelled members - automatically syncs members who cancelled yesterday - ALL CLUBS
+/**
+ * Sync cancelled members endpoint
+ */
 app.post('/api/sync-cancelled', async (req, res) => {
-    let { startDate, endDate } = req.body;
+    console.log('🔄 Starting cancelled members sync...');
     
-    // Validate configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY) {
-        return res.status(500).json({
-            error: 'ABC API keys not configured'
-        });
-    }
-    
-    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
-        return res.status(500).json({
-            error: 'No clubs configured in clubs-config.json'
-        });
-    }
-    
-    // Calculate last 3 days if no dates provided
-if (!startDate && !endDate) {
-    const today = new Date();
-    const end = new Date(today);
-    end.setDate(end.getDate() - 1); // Yesterday
-    const start = new Date(today);
-    start.setDate(start.getDate() - 3); // 3 days ago
-    startDate = start.toISOString().split('T')[0];
-    endDate = end.toISOString().split('T')[0];
-    console.log(`Auto-set to last 3 days: ${startDate} to ${endDate}`);
-}
+    const results = {
+        totalClubs: 0,
+        totalMembers: 0,
+        tagged: 0,
+        alreadyTagged: 0,
+        notFound: 0,
+        errors: 0,
+        clubs: []
+    };
     
     try {
-        console.log(`\n🏢 Processing cancelled members for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
-        
-        const results = {
-            type: 'cancelled_members',
-            totalClubs: 0,
-            dateRange: `${startDate} to ${endDate}`,
-            totalMembers: 0,
-            tagged: 0,
-            alreadyTagged: 0,
-            notFound: 0,
-            errors: 0,
-            clubs: []
-        };
-        
-        // Process each enabled club
         const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
         results.totalClubs = enabledClubs.length;
         
+        // Calculate date range - yesterday only
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startDate = yesterday.toISOString().split('T')[0];
+        results.dateRange = startDate;
+        
+        console.log(`📅 Date Range: ${startDate}`);
+        console.log(`🏢 Processing ${enabledClubs.length} clubs...\n`);
+        
         for (const club of enabledClubs) {
-            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            console.log(`\n📍 Processing ${club.clubName} (${club.clubNumber})...`);
             
             const clubResult = {
                 clubNumber: club.clubNumber,
@@ -1589,593 +668,609 @@ if (!startDate && !endDate) {
                 tagged: 0,
                 alreadyTagged: 0,
                 notFound: 0,
-                errors: 0,
-                members: []
+                errors: 0
             };
             
             try {
-                // Fetch cancelled members
-                const members = await fetchCancelledMembersFromABC(club.clubNumber, startDate, endDate);
+                // Fetch cancelled members with cancelDate parameter
+                console.log(`   Fetching cancelled members with cancelDate >= ${startDate}...`);
+                const membersData = await makeABCRequest('/members', {
+                    club_number: club.clubNumber,
+                    cancelDate: startDate,  // Use cancelDate parameter
+                    status: 'C',
+                    limit: 1000
+                });
+                
+                const members = membersData.members || [];
                 clubResult.totalMembers = members.length;
                 results.totalMembers += members.length;
                 
-                console.log(`Found ${members.length} cancelled members`);
+                console.log(`   Found ${members.length} cancelled members`);
                 
-                // Tag each cancelled member in GHL using club-specific credentials
                 for (const member of members) {
                     try {
-                        const personal = member.personal || {};
-                        const email = personal.email;
+                        // Search for existing contact
+                        const existingContact = await findContactByMemberId(
+                            member.memberId,
+                            club.ghlLocationId,
+                            club.ghlAccessToken
+                        );
                         
-                        if (!email) {
-                            console.log(`⚠️ Skipping member without email: ${member.memberId}`);
+                        if (!existingContact) {
+                            console.log(`   ⚠️ Member ${member.memberId} not found in GHL`);
                             clubResult.notFound++;
                             results.notFound++;
                             continue;
                         }
                         
-                        // Prepare custom fields with cancel date
-                        const customFields = [
-                            { key: 'cancel_date', value: personal.memberStatusDate || '' }
-                        ];
+                        // Check if already has the tag
+                        const hasTag = existingContact.tags && existingContact.tags.includes('Cancelled');
                         
-                        // Add 'cancelled / past member' tag with cancel date
-                        const result = await addTagToContact(email, club.ghlApiKey, club.ghlLocationId, 'cancelled / past member', customFields);
-                        
-                        if (result.action === 'tagged') {
-                            clubResult.tagged++;
-                            results.tagged++;
-                        } else if (result.action === 'already_tagged') {
+                        if (hasTag) {
+                            console.log(`   ℹ️ Member ${member.memberId} already has Cancelled tag`);
                             clubResult.alreadyTagged++;
                             results.alreadyTagged++;
-                        } else if (result.action === 'not_found') {
-                            clubResult.notFound++;
-                            results.notFound++;
+                            
+                            // Update the cancel date anyway
+                            const cancelDate = formatDateForGHL(member.cancelDate);
+                            if (cancelDate) {
+                                await updateContactDateField(
+                                    existingContact.id,
+                                    'cancel_date',
+                                    cancelDate,
+                                    club.ghlLocationId,
+                                    club.ghlAccessToken
+                                );
+                            }
+                        } else {
+                            // Add Cancelled tag
+                            const tagAdded = await addTagToContact(
+                                existingContact.id,
+                                'Cancelled',
+                                club.ghlLocationId,
+                                club.ghlAccessToken
+                            );
+                            
+                            if (tagAdded) {
+                                clubResult.tagged++;
+                                results.tagged++;
+                                
+                                // Update the cancel date
+                                const cancelDate = formatDateForGHL(member.cancelDate);
+                                if (cancelDate) {
+                                    await updateContactDateField(
+                                        existingContact.id,
+                                        'cancel_date',
+                                        cancelDate,
+                                        club.ghlLocationId,
+                                        club.ghlAccessToken
+                                    );
+                                }
+                            } else {
+                                clubResult.errors++;
+                                results.errors++;
+                            }
                         }
                         
-                        clubResult.members.push({
-                            email: email,
-                            name: `${personal.firstName} ${personal.lastName}`,
-                            cancelDate: personal.memberStatusDate,
-                            cancelReason: personal.memberStatusReason,
-                            action: result.action
-                        });
+                        // Add delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 100));
                         
-                    } catch (memberError) {
+                    } catch (error) {
+                        console.error(`   ❌ Error processing member ${member.memberId}:`, error.message);
                         clubResult.errors++;
                         results.errors++;
-                        console.error(`Error processing member: ${memberError.message}`);
                     }
                 }
                 
-            } catch (clubError) {
+                console.log(`   ✅ ${club.clubName} complete: ${clubResult.tagged} tagged, ${clubResult.alreadyTagged} already tagged, ${clubResult.notFound} not found, ${clubResult.errors} errors`);
+                
+            } catch (error) {
+                console.error(`   ❌ Error processing club ${club.clubName}:`, error.message);
                 clubResult.errors++;
                 results.errors++;
-                console.error(`Error processing club ${club.clubName}:`, clubError.message);
             }
             
             results.clubs.push(clubResult);
         }
         
-        console.log(`\n=== ALL CLUBS - Cancelled Members Sync Complete ===`);
-        console.log(`Total Clubs: ${results.totalClubs}`);
-        console.log(`Total Members: ${results.totalMembers}`);
-        console.log(`Tagged: ${results.tagged}`);
-        console.log(`Already Tagged: ${results.alreadyTagged}`);
-        console.log(`Not Found: ${results.notFound}`);
-        console.log(`Errors: ${results.errors}`);
+        console.log('\n✅ Cancelled members sync complete!');
+        console.log(`📊 Total: ${results.totalMembers} members, ${results.tagged} tagged, ${results.alreadyTagged} already tagged, ${results.errors} errors`);
         
         res.json({
             success: true,
-            message: 'Multi-club cancelled members sync completed',
+            message: 'Cancelled members sync completed successfully',
             results: results,
             timestamp: new Date().toISOString()
         });
         
     } catch (error) {
-        console.error('Cancelled sync error:', error);
+        console.error('❌ Cancelled members sync failed:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            results: results
         });
     }
 });
 
-// Sync past due members - sync active members exactly 3 days past due - ALL CLUBS
+/**
+ * Sync past due members endpoint
+ */
 app.post('/api/sync-past-due', async (req, res) => {
-    // Validate configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY) {
-        return res.status(500).json({
-            error: 'ABC API keys not configured'
-        });
-    }
+    console.log('🔄 Starting past due members sync (3 days)...');
     
-    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
-        return res.status(500).json({
-            error: 'No clubs configured in clubs-config.json'
-        });
-    }
+    const results = {
+        totalClubs: 0,
+        totalMembers: 0,
+        tagged: 0,
+        notFound: 0,
+        errors: 0,
+        clubs: []
+    };
     
     try {
-        console.log(`\n🏢 Processing past due members for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
-        
-        const results = {
-            type: 'past_due_members',
-            totalClubs: 0,
-            daysPastDue: 3,
-            totalMembers: 0,
-            tagged: 0,
-            alreadyTagged: 0,
-            notFound: 0,
-            errors: 0,
-            clubs: []
-        };
-        
-        // Process each enabled club
         const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
         results.totalClubs = enabledClubs.length;
         
+        console.log(`🏢 Processing ${enabledClubs.length} clubs...\n`);
+        
         for (const club of enabledClubs) {
-            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            console.log(`\n📍 Processing ${club.clubName} (${club.clubNumber})...`);
             
             const clubResult = {
                 clubNumber: club.clubNumber,
                 clubName: club.clubName,
-                totalMembers: 0,
+                members: 0,
                 tagged: 0,
-                alreadyTagged: 0,
                 notFound: 0,
-                errors: 0,
-                members: []
+                errors: 0
             };
             
             try {
-                // Fetch members exactly 3 days past due
-                const members = await fetchOneDayPastDueMembers(club.clubNumber);
-                clubResult.totalMembers = members.length;
+                // Fetch past due members (3 days past due)
+                console.log(`   Fetching members with 3 days past due...`);
+                const membersData = await makeABCRequest('/members', {
+                    club_number: club.clubNumber,
+                    past_due_days: 3,
+                    limit: 1000
+                });
+                
+                const members = membersData.members || [];
+                clubResult.members = members.length;
                 results.totalMembers += members.length;
                 
-                console.log(`Found ${members.length} members 3 days past due`);
+                console.log(`   Found ${members.length} members 3 days past due`);
                 
-                // Tag each past due member in GHL using club-specific credentials
                 for (const member of members) {
                     try {
-                        const personal = member.personal || {};
-                        const agreement = member.agreement || {};
-                        const email = personal.email;
+                        // Search for existing contact
+                        const existingContact = await findContactByMemberId(
+                            member.memberId,
+                            club.ghlLocationId,
+                            club.ghlAccessToken
+                        );
                         
-                        if (!email) {
-                            console.log(`⚠️ Skipping member without email: ${member.memberId}`);
+                        if (!existingContact) {
+                            console.log(`   ⚠️ Member ${member.memberId} not found in GHL`);
                             clubResult.notFound++;
                             results.notFound++;
                             continue;
                         }
                         
-                        // Add 'past due' tag with club-specific credentials
-                        const result = await addTagToContact(email, club.ghlApiKey, club.ghlLocationId, 'past due');
+                        // Add Past Due tag
+                        const tagAdded = await addTagToContact(
+                            existingContact.id,
+                            'Past Due',
+                            club.ghlLocationId,
+                            club.ghlAccessToken
+                        );
                         
-                        if (result.action === 'tagged') {
+                        if (tagAdded) {
                             clubResult.tagged++;
                             results.tagged++;
-                        } else if (result.action === 'already_tagged') {
-                            clubResult.alreadyTagged++;
-                            results.alreadyTagged++;
-                        } else if (result.action === 'not_found') {
-                            clubResult.notFound++;
-                            results.notFound++;
+                            
+                            // Update the past_due_date field with current date
+                            const currentDate = new Date().toISOString().split('T')[0];
+                            await updateContactDateField(
+                                existingContact.id,
+                                'past_due_date',
+                                currentDate,
+                                club.ghlLocationId,
+                                club.ghlAccessToken
+                            );
+                        } else {
+                            clubResult.errors++;
+                            results.errors++;
                         }
                         
-                        clubResult.members.push({
-                            email: email,
-                            name: `${personal.firstName} ${personal.lastName}`,
-                            nextBillingDate: agreement.nextBillingDate,
-                            pastDueBalance: agreement.pastDueBalance,
-                            action: result.action
-                        });
+                        // Add delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 100));
                         
-                    } catch (memberError) {
+                    } catch (error) {
+                        console.error(`   ❌ Error processing member ${member.memberId}:`, error.message);
                         clubResult.errors++;
                         results.errors++;
-                        console.error(`Error processing member: ${memberError.message}`);
                     }
                 }
                 
-            } catch (clubError) {
+                console.log(`   ✅ ${club.clubName} complete: ${clubResult.tagged} tagged, ${clubResult.notFound} not found, ${clubResult.errors} errors`);
+                
+            } catch (error) {
+                console.error(`   ❌ Error processing club ${club.clubName}:`, error.message);
                 clubResult.errors++;
                 results.errors++;
-                console.error(`Error processing club ${club.clubName}:`, clubError.message);
             }
             
             results.clubs.push(clubResult);
         }
         
-        console.log(`\n=== ALL CLUBS - Past Due Members Sync Complete ===`);
-        console.log(`Total Clubs: ${results.totalClubs}`);
-        console.log(`Total Members: ${results.totalMembers}`);
-        console.log(`Tagged: ${results.tagged}`);
-        console.log(`Already Tagged: ${results.alreadyTagged}`);
-        console.log(`Not Found: ${results.notFound}`);
-        console.log(`Errors: ${results.errors}`);
+        console.log('\n✅ Past due members sync complete!');
+        console.log(`📊 Total: ${results.totalMembers} members, ${results.tagged} tagged, ${results.errors} errors`);
         
         res.json({
             success: true,
-            message: 'Multi-club past due members sync completed',
+            message: 'Past due members sync completed successfully',
             results: results,
             timestamp: new Date().toISOString()
         });
         
     } catch (error) {
-        console.error('Past due sync error:', error);
+        console.error('❌ Past due members sync failed:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            results: results
         });
     }
 });
 
-// Sync new PT services - automatically syncs PT services sold yesterday - ALL CLUBS
+/**
+ * Sync new PT services endpoint
+ */
 app.post('/api/sync-pt-new', async (req, res) => {
-    let { startDate, endDate } = req.body;
+    console.log('🔄 Starting new PT services sync...');
     
-    // Validate configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY) {
-        return res.status(500).json({
-            error: 'ABC API keys not configured'
-        });
-    }
-    
-    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
-        return res.status(500).json({
-            error: 'No clubs configured in clubs-config.json'
-        });
-    }
-    
-  // Calculate last 3 days if no dates provided
-if (!startDate && !endDate) {
-    const today = new Date();
-    const end = new Date(today);
-    end.setDate(end.getDate() - 1); // Yesterday
-    const start = new Date(today);
-    start.setDate(start.getDate() - 3); // 3 days ago
-    startDate = start.toISOString().split('T')[0];
-    endDate = end.toISOString().split('T')[0];
-    console.log(`Auto-set to last 3 days: ${startDate} to ${endDate}`);
-}
+    const results = {
+        totalClubs: 0,
+        totalServices: 0,
+        tagged: 0,
+        alreadyTagged: 0,
+        notFound: 0,
+        errors: 0,
+        clubs: []
+    };
     
     try {
-        console.log(`\n🏢 Processing new PT services for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
-        
-        const results = {
-            type: 'new_pt_services',
-            totalClubs: 0,
-            dateRange: `${startDate} to ${endDate}`,
-            totalServices: 0,
-            created: 0,
-            updated: 0,
-            tagged: 0,
-            errors: 0,
-            clubs: []
-        };
-        
-        // Process each enabled club
         const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
         results.totalClubs = enabledClubs.length;
         
+        // Calculate date range - yesterday only
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startDate = yesterday.toISOString().split('T')[0];
+        results.dateRange = startDate;
+        
+        console.log(`📅 Date Range: ${startDate}`);
+        console.log(`🏢 Processing ${enabledClubs.length} clubs...\n`);
+        
         for (const club of enabledClubs) {
-            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            console.log(`\n📍 Processing ${club.clubName} (${club.clubNumber})...`);
             
             const clubResult = {
                 clubNumber: club.clubNumber,
                 clubName: club.clubName,
                 totalServices: 0,
-                created: 0,
-                updated: 0,
                 tagged: 0,
-                errors: 0,
-                services: []
+                alreadyTagged: 0,
+                notFound: 0,
+                errors: 0
             };
             
             try {
-                // Fetch new recurring services (sold in date range)
-                const services = await fetchRecurringServicesFromABC(club.clubNumber, startDate, endDate, 'Active', 'sale');
+                // Fetch new PT services with startDate parameter
+                console.log(`   Fetching PT services with startDate >= ${startDate}...`);
+                const servicesData = await makeABCRequest('/services', {
+                    club_number: club.clubNumber,
+                    service_name: 'Personal Training',
+                    startDate: startDate,  // Use startDate parameter for services
+                    status: 'active',
+                    limit: 1000
+                });
+                
+                const services = servicesData.services || [];
                 clubResult.totalServices = services.length;
                 results.totalServices += services.length;
                 
-                console.log(`Found ${services.length} new PT services`);
+                console.log(`   Found ${services.length} new PT services`);
                 
-                // Fetch member details from ABC and create/update in GHL
                 for (const service of services) {
                     try {
-                        console.log(`\n━━━ Processing PT Service ━━━`);
-                        console.log(`Service: ${service.serviceItem}`);
-                        console.log(`Member: ${service.memberFirstName} ${service.memberLastName}`);
-                        console.log(`MemberId: ${service.memberId}`);
-                        console.log(`Sale Date: ${service.recurringServiceDates?.saleDate}`);
+                        // Search for existing contact
+                        const existingContact = await findContactByMemberId(
+                            service.memberId,
+                            club.ghlLocationId,
+                            club.ghlAccessToken
+                        );
                         
-                        // Fetch full member details from ABC
-                        const member = await fetchMemberByIdFromABC(club.clubNumber, service.memberId);
-                        
-                        if (!member || !member.personal?.email) {
-                            console.log(`⚠️ Member has no email, skipping`);
-                            clubResult.errors++;
-                            results.errors++;
-                            clubResult.services.push({
-                                memberId: service.memberId,
-                                memberName: `${service.memberFirstName} ${service.memberLastName}`,
-                                serviceItem: service.serviceItem,
-                                saleDate: service.recurringServiceDates?.saleDate,
-                                action: 'no_email'
-                            });
+                        if (!existingContact) {
+                            console.log(`   ⚠️ Member ${service.memberId} not found in GHL`);
+                            clubResult.notFound++;
+                            results.notFound++;
                             continue;
                         }
                         
-                        console.log(`Creating/updating contact in GHL...`);
+                        // Check if already has the tag
+                        const hasTag = existingContact.tags && existingContact.tags.includes('PT Member');
                         
-                        // Build service employee full name
-                        const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
-                        console.log(`Service Employee: ${serviceEmployee}`);
-                        
-                        // Add pt_sign_date to member object for syncContactToGHL
-                        member.ptSignDate = service.recurringServiceDates?.saleDate || '';
-                        
-                        // Create/update contact in GHL with 'pt current' tag and service employee using club-specific credentials
-                        const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, 'pt current', serviceEmployee || null);
-                        
-                        if (result.action === 'created') {
-                            clubResult.created++;
-                            results.created++;
-                        } else if (result.action === 'updated') {
-                            clubResult.updated++;
-                            results.updated++;
+                        if (hasTag) {
+                            console.log(`   ℹ️ Member ${service.memberId} already has PT Member tag`);
+                            clubResult.alreadyTagged++;
+                            results.alreadyTagged++;
+                            
+                            // Update the PT start date anyway
+                            const ptStartDate = formatDateForGHL(service.startDate);
+                            if (ptStartDate) {
+                                await updateContactDateField(
+                                    existingContact.id,
+                                    'pt_start_date',
+                                    ptStartDate,
+                                    club.ghlLocationId,
+                                    club.ghlAccessToken
+                                );
+                            }
+                        } else {
+                            // Add PT Member tag
+                            const tagAdded = await addTagToContact(
+                                existingContact.id,
+                                'PT Member',
+                                club.ghlLocationId,
+                                club.ghlAccessToken
+                            );
+                            
+                            if (tagAdded) {
+                                clubResult.tagged++;
+                                results.tagged++;
+                                
+                                // Update the PT start date
+                                const ptStartDate = formatDateForGHL(service.startDate);
+                                if (ptStartDate) {
+                                    await updateContactDateField(
+                                        existingContact.id,
+                                        'pt_start_date',
+                                        ptStartDate,
+                                        club.ghlLocationId,
+                                        club.ghlAccessToken
+                                    );
+                                }
+                            } else {
+                                clubResult.errors++;
+                                results.errors++;
+                            }
                         }
-                        clubResult.tagged++;
-                        results.tagged++;
                         
-                        clubResult.services.push({
-                            memberId: service.memberId,
-                            memberName: `${member.personal.firstName} ${member.personal.lastName}`,
-                            email: member.personal.email,
-                            serviceItem: service.serviceItem,
-                            saleDate: service.recurringServiceDates?.saleDate,
-                            salesPerson: `${service.salesPersonFirstName} ${service.salesPersonLastName}`,
-                            action: result.action
-                        });
+                        // Add delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 100));
                         
-                        console.log(`✅ Completed: ${result.action}`);
-                        
-                    } catch (serviceError) {
+                    } catch (error) {
+                        console.error(`   ❌ Error processing service for member ${service.memberId}:`, error.message);
                         clubResult.errors++;
                         results.errors++;
-                        console.error(`❌ Error: ${serviceError.message}`);
-                        clubResult.services.push({
-                            memberId: service.memberId,
-                            memberName: `${service.memberFirstName} ${service.memberLastName}`,
-                            error: serviceError.message
-                        });
                     }
                 }
                 
-            } catch (clubError) {
+                console.log(`   ✅ ${club.clubName} complete: ${clubResult.tagged} tagged, ${clubResult.alreadyTagged} already tagged, ${clubResult.notFound} not found, ${clubResult.errors} errors`);
+                
+            } catch (error) {
+                console.error(`   ❌ Error processing club ${club.clubName}:`, error.message);
                 clubResult.errors++;
                 results.errors++;
-                console.error(`Error processing club ${club.clubName}:`, clubError.message);
             }
             
             results.clubs.push(clubResult);
         }
         
-        console.log(`\n=== ALL CLUBS - New PT Services Sync Complete ===`);
-        console.log(`Total Clubs: ${results.totalClubs}`);
-        console.log(`Total Services: ${results.totalServices}`);
-        console.log(`Created: ${results.created}`);
-        console.log(`Updated: ${results.updated}`);
-        console.log(`Tagged: ${results.tagged}`);
-        console.log(`Errors: ${results.errors}`);
+        console.log('\n✅ New PT services sync complete!');
+        console.log(`📊 Total: ${results.totalServices} services, ${results.tagged} tagged, ${results.alreadyTagged} already tagged, ${results.errors} errors`);
         
         res.json({
             success: true,
-            message: 'Multi-club new PT services sync completed',
+            message: 'New PT services sync completed successfully',
             results: results,
             timestamp: new Date().toISOString()
         });
         
     } catch (error) {
-        console.error('PT sync error:', error);
+        console.error('❌ New PT services sync failed:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            results: results
         });
     }
 });
 
-// Sync deactivated PT services - automatically syncs PT services deactivated yesterday - ALL CLUBS
+/**
+ * Sync deactivated PT services endpoint
+ */
 app.post('/api/sync-pt-deactivated', async (req, res) => {
-    let { startDate, endDate } = req.body;
+    console.log('🔄 Starting deactivated PT services sync...');
     
-    // Validate configuration
-    if (!ABC_APP_ID || !ABC_APP_KEY) {
-        return res.status(500).json({
-            error: 'ABC API keys not configured'
-        });
-    }
-    
-    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
-        return res.status(500).json({
-            error: 'No clubs configured in clubs-config.json'
-        });
-    }
-    
-   // Calculate last 3 days if no dates provided
-if (!startDate && !endDate) {
-    const today = new Date();
-    const end = new Date(today);
-    end.setDate(end.getDate() - 1); // Yesterday
-    const start = new Date(today);
-    start.setDate(start.getDate() - 3); // 3 days ago
-    startDate = start.toISOString().split('T')[0];
-    endDate = end.toISOString().split('T')[0];
-    console.log(`Auto-set to last 3 days: ${startDate} to ${endDate}`);
-}
+    const results = {
+        totalClubs: 0,
+        totalServices: 0,
+        tagged: 0,
+        alreadyTagged: 0,
+        notFound: 0,
+        errors: 0,
+        clubs: []
+    };
     
     try {
-        console.log(`\n🏢 Processing deactivated PT services for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
-        
-        const results = {
-            type: 'deactivated_pt_services',
-            totalClubs: 0,
-            dateRange: `${startDate} to ${endDate}`,
-            totalServices: 0,
-            created: 0,
-            updated: 0,
-            tagged: 0,
-            errors: 0,
-            clubs: []
-        };
-        
-        // Process each enabled club
         const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
         results.totalClubs = enabledClubs.length;
         
+        // Calculate date range - yesterday only
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startDate = yesterday.toISOString().split('T')[0];
+        results.dateRange = startDate;
+        
+        console.log(`📅 Date Range: ${startDate}`);
+        console.log(`🏢 Processing ${enabledClubs.length} clubs...\n`);
+        
         for (const club of enabledClubs) {
-            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            console.log(`\n📍 Processing ${club.clubName} (${club.clubNumber})...`);
             
             const clubResult = {
                 clubNumber: club.clubNumber,
                 clubName: club.clubName,
                 totalServices: 0,
-                created: 0,
-                updated: 0,
                 tagged: 0,
-                errors: 0,
-                services: []
+                alreadyTagged: 0,
+                notFound: 0,
+                errors: 0
             };
             
             try {
-                // Fetch deactivated recurring services
-                const services = await fetchRecurringServicesFromABC(club.clubNumber, startDate, endDate, 'Inactive', 'inactive');
-                
-                // Filter to only those deactivated in date range
-                const deactivatedServices = services.filter(service => {
-                    const inactiveDate = service.recurringServiceDates?.inactiveDate;
-                    if (!inactiveDate) return false;
-                    
-                    const date = inactiveDate.split('T')[0];
-                    return date >= startDate && date <= endDate;
+                // Fetch deactivated PT services with endDate parameter
+                console.log(`   Fetching deactivated PT services with endDate >= ${startDate}...`);
+                const servicesData = await makeABCRequest('/services', {
+                    club_number: club.clubNumber,
+                    service_name: 'Personal Training',
+                    endDate: startDate,  // Use endDate parameter for deactivated services
+                    status: 'inactive',
+                    limit: 1000
                 });
                 
-                clubResult.totalServices = deactivatedServices.length;
-                results.totalServices += deactivatedServices.length;
+                const services = servicesData.services || [];
+                clubResult.totalServices = services.length;
+                results.totalServices += services.length;
                 
-                console.log(`Found ${deactivatedServices.length} deactivated PT services`);
+                console.log(`   Found ${services.length} deactivated PT services`);
                 
-                // Fetch member details from ABC and create/update in GHL
-                for (const service of deactivatedServices) {
+                for (const service of services) {
                     try {
-                        console.log(`\n━━━ Processing Deactivated PT Service ━━━`);
-                        console.log(`Service: ${service.serviceItem}`);
-                        console.log(`Member: ${service.memberFirstName} ${service.memberLastName}`);
-                        console.log(`MemberId: ${service.memberId}`);
-                        console.log(`Inactive Date: ${service.recurringServiceDates?.inactiveDate}`);
+                        // Search for existing contact
+                        const existingContact = await findContactByMemberId(
+                            service.memberId,
+                            club.ghlLocationId,
+                            club.ghlAccessToken
+                        );
                         
-                        // Fetch full member details from ABC
-                        const member = await fetchMemberByIdFromABC(club.clubNumber, service.memberId);
-                        
-                        if (!member || !member.personal?.email) {
-                            console.log(`⚠️ Member has no email, skipping`);
-                            clubResult.errors++;
-                            results.errors++;
-                            clubResult.services.push({
-                                memberId: service.memberId,
-                                memberName: `${service.memberFirstName} ${service.memberLastName}`,
-                                serviceItem: service.serviceItem,
-                                inactiveDate: service.recurringServiceDates?.inactiveDate,
-                                action: 'no_email'
-                            });
+                        if (!existingContact) {
+                            console.log(`   ⚠️ Member ${service.memberId} not found in GHL`);
+                            clubResult.notFound++;
+                            results.notFound++;
                             continue;
                         }
                         
-                        console.log(`Creating/updating contact in GHL...`);
+                        // Check if already has the tag
+                        const hasTag = existingContact.tags && existingContact.tags.includes('PT Deactivated');
                         
-                        // Build service employee full name
-                        const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
-                        console.log(`Service Employee: ${serviceEmployee}`);
-                        
-                        // Add pt_deactivate_date to member object for syncContactToGHL
-                        member.ptDeactivateDate = service.recurringServiceDates?.inactiveDate || '';
-                        
-                        // Create/update contact in GHL with 'ex pt' tag and service employee using club-specific credentials
-                        const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, 'ex pt', serviceEmployee || null);
-                        
-                        if (result.action === 'created') {
-                            clubResult.created++;
-                            results.created++;
-                        } else if (result.action === 'updated') {
-                            clubResult.updated++;
-                            results.updated++;
+                        if (hasTag) {
+                            console.log(`   ℹ️ Member ${service.memberId} already has PT Deactivated tag`);
+                            clubResult.alreadyTagged++;
+                            results.alreadyTagged++;
+                            
+                            // Update the PT end date anyway
+                            const ptEndDate = formatDateForGHL(service.endDate);
+                            if (ptEndDate) {
+                                await updateContactDateField(
+                                    existingContact.id,
+                                    'pt_end_date',
+                                    ptEndDate,
+                                    club.ghlLocationId,
+                                    club.ghlAccessToken
+                                );
+                            }
+                        } else {
+                            // Add PT Deactivated tag
+                            const tagAdded = await addTagToContact(
+                                existingContact.id,
+                                'PT Deactivated',
+                                club.ghlLocationId,
+                                club.ghlAccessToken
+                            );
+                            
+                            if (tagAdded) {
+                                clubResult.tagged++;
+                                results.tagged++;
+                                
+                                // Update the PT end date
+                                const ptEndDate = formatDateForGHL(service.endDate);
+                                if (ptEndDate) {
+                                    await updateContactDateField(
+                                        existingContact.id,
+                                        'pt_end_date',
+                                        ptEndDate,
+                                        club.ghlLocationId,
+                                        club.ghlAccessToken
+                                    );
+                                }
+                            } else {
+                                clubResult.errors++;
+                                results.errors++;
+                            }
                         }
-                        clubResult.tagged++;
-                        results.tagged++;
                         
-                        clubResult.services.push({
-                            memberId: service.memberId,
-                            memberName: `${member.personal.firstName} ${member.personal.lastName}`,
-                            email: member.personal.email,
-                            serviceItem: service.serviceItem,
-                            inactiveDate: service.recurringServiceDates?.inactiveDate,
-                            deactivateReason: service.recurringServiceDates?.deactivateReason,
-                            action: result.action
-                        });
+                        // Add delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 100));
                         
-                        console.log(`✅ Completed: ${result.action}`);
-                        
-                    } catch (serviceError) {
+                    } catch (error) {
+                        console.error(`   ❌ Error processing service for member ${service.memberId}:`, error.message);
                         clubResult.errors++;
                         results.errors++;
-                        console.error(`❌ Error: ${serviceError.message}`);
-                        clubResult.services.push({
-                            memberId: service.memberId,
-                            memberName: `${service.memberFirstName} ${service.memberLastName}`,
-                            error: serviceError.message
-                        });
                     }
                 }
                 
-            } catch (clubError) {
+                console.log(`   ✅ ${club.clubName} complete: ${clubResult.tagged} tagged, ${clubResult.alreadyTagged} already tagged, ${clubResult.notFound} not found, ${clubResult.errors} errors`);
+                
+            } catch (error) {
+                console.error(`   ❌ Error processing club ${club.clubName}:`, error.message);
                 clubResult.errors++;
                 results.errors++;
-                console.error(`Error processing club ${club.clubName}:`, clubError.message);
             }
             
             results.clubs.push(clubResult);
         }
         
-        console.log(`\n=== ALL CLUBS - Deactivated PT Services Sync Complete ===`);
-        console.log(`Total Clubs: ${results.totalClubs}`);
-        console.log(`Total Services: ${results.totalServices}`);
-        console.log(`Created: ${results.created}`);
-        console.log(`Updated: ${results.updated}`);
-        console.log(`Tagged: ${results.tagged}`);
-        console.log(`Errors: ${results.errors}`);
+        console.log('\n✅ Deactivated PT services sync complete!');
+        console.log(`📊 Total: ${results.totalServices} services, ${results.tagged} tagged, ${results.alreadyTagged} already tagged, ${results.errors} errors`);
         
         res.json({
             success: true,
-            message: 'Multi-club deactivated PT services sync completed',
+            message: 'Deactivated PT services sync completed successfully',
             results: results,
             timestamp: new Date().toISOString()
         });
         
     } catch (error) {
-        console.error('Deactivated PT sync error:', error);
+        console.error('❌ Deactivated PT services sync failed:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            results: results
         });
     }
 });
 
-// Master sync endpoint - runs ALL syncs and sends one summary email
-app.post('/api/sync-all', async (req, res) => {
-    console.log('\n🚀 Starting Master Sync - All Endpoints');
+/**
+ * Health check endpoint
+ */
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        clubs: clubsConfig.clubs.length
+    });
+});
+
+/**
+ * Master sync endpoint - runs all 5 syncs in sequence
+ */
+app.post('/api/master-sync', async (req, res) => {
+    console.log('\n🚀 MASTER SYNC INITIATED\n');
+    console.log('═══════════════════════════════════════════════════════════');
     
     const masterResults = {
         startTime: new Date().toISOString(),
@@ -2185,13 +1280,13 @@ app.post('/api/sync-all', async (req, res) => {
     };
     
     try {
-        // 1. Sync new members (yesterday)
+        // 1. Sync new members
         console.log('\n📝 [1/5] Running new members sync...');
         try {
-            const syncResponse = await axios.post(`http://localhost:${PORT}/api/sync`, {});
+            const newMembersResponse = await axios.post(`http://localhost:${PORT}/api/sync-new`, {});
             masterResults.syncs.newMembers = {
                 success: true,
-                results: syncResponse.data.results
+                results: newMembersResponse.data.results
             };
             console.log('✅ New members sync complete');
         } catch (error) {
