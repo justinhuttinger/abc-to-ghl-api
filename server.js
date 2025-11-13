@@ -2376,16 +2376,44 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                     'Content-Type': 'application/json'
                 };
                 
-                console.log('Fetching GHL contacts with PT pif tag...');
-                const ghlResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
-                    headers: headers,
-                    params: { 
-                        locationId: club.ghlLocationId,
-                        limit: 100 // Adjust as needed
-                    }
-                });
+                console.log('Fetching ALL GHL contacts with PT pif tag (paginated)...');
                 
-                const allContacts = ghlResponse.data.contacts || [];
+                // Paginate through ALL contacts
+                let allContacts = [];
+                let currentPage = 1;
+                let hasMorePages = true;
+                
+                while (hasMorePages) {
+                    const ghlResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
+                        headers: headers,
+                        params: { 
+                            locationId: club.ghlLocationId,
+                            limit: 100,
+                            skip: (currentPage - 1) * 100
+                        }
+                    });
+                    
+                    const contacts = ghlResponse.data.contacts || [];
+                    allContacts = allContacts.concat(contacts);
+                    
+                    console.log(`  Page ${currentPage}: ${contacts.length} contacts`);
+                    
+                    // If we got less than 100, we've reached the end
+                    if (contacts.length < 100) {
+                        hasMorePages = false;
+                    } else {
+                        currentPage++;
+                    }
+                    
+                    // Safety limit: stop after 50 pages (5,000 contacts max per club)
+                    if (currentPage > 50) {
+                        console.log(`  ⚠️ Reached safety limit of 50 pages (5,000 contacts)`);
+                        hasMorePages = false;
+                    }
+                }
+                
+                console.log(`Total contacts fetched: ${allContacts.length}`);
+                
                 const pifContacts = allContacts.filter(c => c.tags && c.tags.includes('PT pif'));
                 
                 console.log(`Found ${pifContacts.length} contacts with PT pif tag`);
