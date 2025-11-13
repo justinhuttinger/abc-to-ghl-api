@@ -942,7 +942,9 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
                 { key: 'is_past_due', value: agreement.isPastDue || '' },
                 { key: 'total_check_in_count', value: personal.totalCheckInCount || '' },
                 { key: 'last_check_in', value: personal.lastCheckInTimestamp || '' },
-                ...(serviceEmployee ? [{ key: 'service_employee', value: serviceEmployee }] : [])
+                ...(serviceEmployee ? [{ key: 'service_employee', value: serviceEmployee }] : []),
+                ...(member.ptSignDate ? [{ key: 'pt_sign_date', value: member.ptSignDate }] : []),
+                ...(member.ptDeactivateDate ? [{ key: 'pt_deactivate_date', value: member.ptDeactivateDate }] : [])
             ]
         };
         
@@ -1101,10 +1103,13 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
 /**
  * Add tag to existing contact in GHL (for recurring services)
  * @param {string} memberEmail - Email of the member
+ * @param {string} ghlApiKey - GHL API Key
+ * @param {string} ghlLocationId - GHL Location ID
  * @param {string} customTag - Tag to add
+ * @param {Array} customFields - Optional custom fields to update
  * @returns {Promise<Object>} GHL response
  */
-async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag) {
+async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag, customFields = []) {
     try {
         const headers = {
             'Authorization': `Bearer ${ghlApiKey}`,
@@ -1148,11 +1153,19 @@ async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag)
         // Add new tag
         existingTags.push(customTag);
         
-        // Update contact with new tag
-        const updateUrl = `${GHL_API_URL}/contacts/${exactMatch.id}`;
-        const response = await axios.put(updateUrl, {
+        // Prepare update data
+        const updateData = {
             tags: existingTags
-        }, { headers: headers });
+        };
+        
+        // Add custom fields if provided
+        if (customFields && customFields.length > 0) {
+            updateData.customFields = customFields;
+        }
+        
+        // Update contact with new tag and custom fields
+        const updateUrl = `${GHL_API_URL}/contacts/${exactMatch.id}`;
+        const response = await axios.put(updateUrl, updateData, { headers: headers });
         
         console.log(`✅ Added '${customTag}' tag to contact: ${memberEmail}`);
         return { action: 'tagged', contact: response.data };
@@ -1601,8 +1614,13 @@ if (!startDate && !endDate) {
                             continue;
                         }
                         
-                        // Add 'cancelled / past member' tag with club-specific credentials
-                        const result = await addTagToContact(email, club.ghlApiKey, club.ghlLocationId, 'cancelled / past member');
+                        // Prepare custom fields with cancel date
+                        const customFields = [
+                            { key: 'cancel_date', value: personal.memberStatusDate || '' }
+                        ];
+                        
+                        // Add 'cancelled / past member' tag with cancel date
+                        const result = await addTagToContact(email, club.ghlApiKey, club.ghlLocationId, 'cancelled / past member', customFields);
                         
                         if (result.action === 'tagged') {
                             clubResult.tagged++;
@@ -1897,6 +1915,9 @@ if (!startDate && !endDate) {
                         const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
                         console.log(`Service Employee: ${serviceEmployee}`);
                         
+                        // Add pt_sign_date to member object for syncContactToGHL
+                        member.ptSignDate = service.recurringServiceDates?.saleDate || '';
+                        
                         // Create/update contact in GHL with 'pt current' tag and service employee using club-specific credentials
                         const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, 'pt current', serviceEmployee || null);
                         
@@ -2078,6 +2099,9 @@ if (!startDate && !endDate) {
                         // Build service employee full name
                         const serviceEmployee = `${service.serviceEmployeeFirstName || ''} ${service.serviceEmployeeLastName || ''}`.trim();
                         console.log(`Service Employee: ${serviceEmployee}`);
+                        
+                        // Add pt_deactivate_date to member object for syncContactToGHL
+                        member.ptDeactivateDate = service.recurringServiceDates?.inactiveDate || '';
                         
                         // Create/update contact in GHL with 'ex pt' tag and service employee using club-specific credentials
                         const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, 'ex pt', serviceEmployee || null);
