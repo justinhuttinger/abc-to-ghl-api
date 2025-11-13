@@ -112,11 +112,103 @@ async function sendMasterSyncEmail(masterResults, success = true) {
     }
     
     try {
+        // Generate CSV data
+        let csvData = 'Sync Type,Club Name,Club Number,Member Name,Email,Phone,Action,Date,Notes\n';
+        
+        // 1. New Members
+        if (masterResults.syncs.newMembers && masterResults.syncs.newMembers.success) {
+            const sync = masterResults.syncs.newMembers.results;
+            if (sync.clubs) {
+                sync.clubs.forEach(club => {
+                    if (club.syncedMembers && club.syncedMembers.length > 0) {
+                        club.syncedMembers.forEach(member => {
+                            csvData += `New Members,${club.clubName},${club.clubNumber},"${member.name}",${member.email},${member.phone},${member.action},${member.signDate},"Membership: ${member.membershipType}"\n`;
+                        });
+                    }
+                });
+            }
+        }
+        
+        // 2. Cancelled Members
+        if (masterResults.syncs.cancelledMembers && masterResults.syncs.cancelledMembers.success) {
+            const sync = masterResults.syncs.cancelledMembers.results;
+            if (sync.clubs) {
+                sync.clubs.forEach(club => {
+                    if (club.members && club.members.length > 0) {
+                        club.members.forEach(member => {
+                            csvData += `Cancelled Members,${club.clubName},${club.clubNumber},"${member.name}",${member.email},,${member.action},${member.cancelDate || ''},"Cancel reason: ${member.cancelReason || 'N/A'}"\n`;
+                        });
+                    }
+                });
+            }
+        }
+        
+        // 3. Past Due Members  
+        if (masterResults.syncs.pastDueMembers && masterResults.syncs.pastDueMembers.success) {
+            const sync = masterResults.syncs.pastDueMembers.results;
+            if (sync.clubs) {
+                sync.clubs.forEach(club => {
+                    if (club.members && club.members.length > 0) {
+                        club.members.forEach(member => {
+                            csvData += `Past Due Members,${club.clubName},${club.clubNumber},"${member.name}",${member.email},,${member.action},,${member.daysOverdue} days overdue\n`;
+                        });
+                    }
+                });
+            }
+        }
+        
+        // 4. New PT Services
+        if (masterResults.syncs.newPTServices && masterResults.syncs.newPTServices.success) {
+            const sync = masterResults.syncs.newPTServices.results;
+            if (sync.clubs) {
+                sync.clubs.forEach(club => {
+                    if (club.services && club.services.length > 0) {
+                        club.services.forEach(service => {
+                            csvData += `New PT Services,${club.clubName},${club.clubNumber},"${service.memberName}",${service.email},,${service.action},${service.saleDate || ''},"Service: ${service.serviceItem || 'N/A'}"\n`;
+                        });
+                    }
+                });
+            }
+        }
+        
+        // 5. Deactivated PT Services
+        if (masterResults.syncs.deactivatedPTServices && masterResults.syncs.deactivatedPTServices.success) {
+            const sync = masterResults.syncs.deactivatedPTServices.results;
+            if (sync.clubs) {
+                sync.clubs.forEach(club => {
+                    if (club.services && club.services.length > 0) {
+                        club.services.forEach(service => {
+                            csvData += `Deactivated PT Services,${club.clubName},${club.clubNumber},"${service.memberName}",${service.email},,${service.action},${service.inactiveDate || ''},"Service: ${service.serviceItem || 'N/A'} | Reason: ${service.deactivateReason || 'N/A'}"\n`;
+                        });
+                    }
+                });
+            }
+        }
+        
+        // 6. PIF Completed
+        if (masterResults.syncs.pifCompleted && masterResults.syncs.pifCompleted.success) {
+            const sync = masterResults.syncs.pifCompleted.results;
+            if (sync.clubs) {
+                sync.clubs.forEach(club => {
+                    if (club.members && club.members.length > 0) {
+                        club.members.forEach(member => {
+                            csvData += `PIF Completed,${club.clubName},${club.clubNumber},"${member.name}",${member.email},,${member.action},,Sessions: ${member.availableSessions}\n`;
+                        });
+                    }
+                });
+            }
+        }
+        
+        // Create CSV attachment
+        const csvBuffer = Buffer.from(csvData, 'utf-8');
+        const today = new Date().toISOString().split('T')[0];
+        
         let html = '<h1>🚀 Daily WCS Sync Report</h1>';
         html += '<p><strong>Status:</strong> ' + (success ? '✅ ALL SYNCS COMPLETE' : '❌ SOME SYNCS FAILED') + '</p>';
         html += '<p><strong>Start Time:</strong> ' + masterResults.startTime + '</p>';
         html += '<p><strong>End Time:</strong> ' + masterResults.endTime + '</p>';
         html += '<p><strong>Total Duration:</strong> ' + masterResults.totalDuration + '</p>';
+        html += '<p>📎 <strong>Detailed report attached as CSV</strong></p>';
         html += '<hr>';
         
         // 1. New Members
@@ -139,7 +231,7 @@ async function sendMasterSyncEmail(masterResults, success = true) {
                         html += 'Created: ' + club.created + ' | ';
                         html += 'Updated: ' + club.updated + ' | ';
                         html += 'Skipped: ' + club.skipped + ' | ';
-                        html += 'Errors: ' + club.errors;
+                        html += 'Errors: ' + (Array.isArray(club.errors) ? club.errors.length : club.errors);
                         html += '</div>';
                     });
                 }
@@ -298,11 +390,19 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             to: NOTIFICATION_EMAIL,
             from: EMAIL_USER || 'justin@wcstrength.com',
             subject: success ? '✅ Daily Sync Complete - ' + masterResults.totalDuration : '❌ Daily Sync Failed',
-            html: html
+            html: html,
+            attachments: [
+                {
+                    content: csvBuffer.toString('base64'),
+                    filename: `wcs_sync_report_${today}.csv`,
+                    type: 'text/csv',
+                    disposition: 'attachment'
+                }
+            ]
         };
         
         await sgMail.send(msg);
-        console.log('📧 Master sync email sent to ' + NOTIFICATION_EMAIL);
+        console.log('📧 Master sync email sent to ' + NOTIFICATION_EMAIL + ' with CSV attachment');
         
     } catch (error) {
         console.error('Failed to send master sync email:', error.message);
@@ -1468,6 +1568,7 @@ if (!startDate && !endDate) {
                 updated: 0,
                 skipped: 0,
                 skippedMembers: [],
+                syncedMembers: [], // NEW: collect synced member details for CSV
                 errors: [],
                 startTime: new Date().toISOString()
             };
@@ -1513,6 +1614,16 @@ if (!startDate && !endDate) {
                             clubResult.updated++;
                             results.updated++;
                         }
+                        
+                        // Collect member details for CSV report
+                        clubResult.syncedMembers.push({
+                            name: `${member.personal?.firstName || ''} ${member.personal?.lastName || ''}`.trim(),
+                            email: member.personal?.email || '',
+                            phone: member.personal?.primaryPhone || member.personal?.mobilePhone || '',
+                            action: result.action,
+                            signDate: member.agreement?.signDate || '',
+                            membershipType: member.agreement?.membershipType || ''
+                        });
                         
                     } catch (memberError) {
                         clubResult.errors.push({
