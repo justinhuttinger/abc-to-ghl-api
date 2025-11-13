@@ -263,6 +263,34 @@ async function sendMasterSyncEmail(masterResults, success = true) {
             }
         }
         
+        // 6. PIF Completed
+        if (masterResults.syncs.pifCompleted) {
+            const sync = masterResults.syncs.pifCompleted;
+            html += '<h2>6️⃣ PIF Completion Check</h2>';
+            html += '<p><strong>Status:</strong> ' + (sync.success ? '✅ Success' : '❌ Failed') + '</p>';
+            if (sync.success) {
+                const r = sync.results;
+                html += '<p><strong>Overall:</strong> ' + r.totalChecked + ' checked, ' + r.completed + ' completed, ' + r.stillActive + ' still active, ' + r.notFound + ' not found, ' + r.errors + ' errors</p>';
+                
+                // Club-by-club breakdown
+                html += '<h3>By Club:</h3>';
+                if (r.clubs && r.clubs.length > 0) {
+                    r.clubs.forEach(club => {
+                        html += '<div style="margin-left: 20px; margin-bottom: 15px; border-left: 3px solid #673AB7; padding-left: 10px;">';
+                        html += '<strong>' + club.clubName + ' (#' + club.clubNumber + ')</strong><br>';
+                        html += 'Checked: ' + club.checked + ' | ';
+                        html += 'Completed: ' + club.completed + ' | ';
+                        html += 'Still Active: ' + club.stillActive + ' | ';
+                        html += 'Not Found: ' + club.notFound + ' | ';
+                        html += 'Errors: ' + club.errors;
+                        html += '</div>';
+                    });
+                }
+            } else {
+                html += '<p style="color: red;">Error: ' + sync.error + '</p>';
+            }
+        }
+        
         html += '<hr>';
         html += '<p style="color: #666; font-size: 12px;">Automated report from WCS Sync Server</p>';
         
@@ -1876,8 +1904,8 @@ if (!startDate && !endDate) {
             };
             
             try {
-                // Fetch new recurring services (sold in date range)
-                const services = await fetchRecurringServicesFromABC(club.clubNumber, startDate, endDate, 'Active', 'sale');
+                // Fetch new recurring services (sold in date range) - no status filter to capture PIFs
+                const services = await fetchRecurringServicesFromABC(club.clubNumber, startDate, endDate, null, 'sale');
                 clubResult.totalServices = services.length;
                 results.totalServices += services.length;
                 
@@ -1918,8 +1946,11 @@ if (!startDate && !endDate) {
                         // Add pt_sign_date to member object for syncContactToGHL
                         member.ptSignDate = service.recurringServiceDates?.saleDate || '';
                         
-                        // Create/update contact in GHL with 'pt current' tag and service employee using club-specific credentials
-                        const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, 'pt current', serviceEmployee || null);
+                        // Determine tag based on service type
+                        const ptTag = service.recurringServiceSubStatus === 'Paid in Full' ? 'PT pif' : 'pt current';
+                        
+                        // Create/update contact in GHL with appropriate tag and service employee using club-specific credentials
+                        const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, ptTag, serviceEmployee || null);
                         
                         if (result.action === 'created') {
                             clubResult.created++;
@@ -2054,8 +2085,14 @@ if (!startDate && !endDate) {
                 // Fetch deactivated recurring services
                 const services = await fetchRecurringServicesFromABC(club.clubNumber, startDate, endDate, 'Inactive', 'inactive');
                 
-                // Filter to only those deactivated in date range
+                // Filter to only those deactivated in date range, excluding PIFs
                 const deactivatedServices = services.filter(service => {
+                    // Exclude PIFs - they don't use traditional deactivation
+                    if (service.recurringServiceSubStatus === 'Paid in Full' || 
+                        service.recurringTypeDesc === 'Paid in Full') {
+                        return false;
+                    }
+                    
                     const inactiveDate = service.recurringServiceDates?.inactiveDate;
                     if (!inactiveDate) return false;
                     
@@ -2173,6 +2210,188 @@ if (!startDate && !endDate) {
     }
 });
 
+// Sync completed PIF services - checks session balances and tags completed PIFs
+app.post('/api/sync-pif-completed', async (req, res) => {
+    // Validate configuration
+    if (!ABC_APP_ID || !ABC_APP_KEY) {
+        return res.status(500).json({
+            error: 'ABC API keys not configured'
+        });
+    }
+    
+    if (!clubsConfig.clubs || clubsConfig.clubs.length === 0) {
+        return res.status(500).json({
+            error: 'No clubs configured in clubs-config.json'
+        });
+    }
+    
+    try {
+        console.log(`\n🏢 Processing PIF completion check for ${clubsConfig.clubs.filter(c => c.enabled !== false).length} clubs...`);
+        
+        const results = {
+            type: 'pif_completion',
+            totalClubs: 0,
+            totalChecked: 0,
+            completed: 0,
+            stillActive: 0,
+            notFound: 0,
+            errors: 0,
+            clubs: []
+        };
+        
+        // Process each enabled club
+        const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
+        results.totalClubs = enabledClubs.length;
+        
+        for (const club of enabledClubs) {
+            console.log(`\n=== Processing ${club.clubName} (${club.clubNumber}) ===`);
+            
+            const clubResult = {
+                clubNumber: club.clubNumber,
+                clubName: club.clubName,
+                checked: 0,
+                completed: 0,
+                stillActive: 0,
+                notFound: 0,
+                errors: 0,
+                members: []
+            };
+            
+            try {
+                // Get all GHL contacts with 'PT pif' tag
+                const headers = {
+                    'Authorization': `Bearer ${club.ghlApiKey}`,
+                    'Version': '2021-07-28',
+                    'Content-Type': 'application/json'
+                };
+                
+                console.log('Fetching GHL contacts with PT pif tag...');
+                const ghlResponse = await axios.get(`${GHL_API_URL}/contacts/`, {
+                    headers: headers,
+                    params: { 
+                        locationId: club.ghlLocationId,
+                        limit: 100 // Adjust as needed
+                    }
+                });
+                
+                const allContacts = ghlResponse.data.contacts || [];
+                const pifContacts = allContacts.filter(c => c.tags && c.tags.includes('PT pif'));
+                
+                console.log(`Found ${pifContacts.length} contacts with PT pif tag`);
+                
+                // Check each PIF contact's session balance
+                for (const contact of pifContacts) {
+                    try {
+                        clubResult.checked++;
+                        results.totalChecked++;
+                        
+                        // Get abc_member_id from custom fields
+                        const abcMemberId = contact.customFields?.find(f => f.key === 'abc_member_id')?.value;
+                        
+                        if (!abcMemberId) {
+                            console.log(`⚠️ No ABC Member ID for ${contact.email}`);
+                            clubResult.notFound++;
+                            results.notFound++;
+                            continue;
+                        }
+                        
+                        console.log(`\nChecking session balance for ${contact.firstName} ${contact.lastName} (${abcMemberId})`);
+                        
+                        // Fetch service purchase history from ABC
+                        const abcUrl = `${ABC_API_URL}/${club.clubNumber}/members/${abcMemberId}/services/purchasehistory`;
+                        const abcResponse = await axios.get(abcUrl, {
+                            headers: {
+                                'accept': 'application/json',
+                                'app_id': ABC_APP_ID,
+                                'app_key': ABC_APP_KEY
+                            }
+                        });
+                        
+                        const services = abcResponse.data.serviceSummaries || [];
+                        
+                        // Sum up available sessions across all PT services
+                        let totalAvailable = 0;
+                        services.forEach(service => {
+                            const available = parseInt(service.available) || 0;
+                            totalAvailable += available;
+                        });
+                        
+                        console.log(`Total available sessions: ${totalAvailable}`);
+                        
+                        // If no sessions left, update tag to 'ex pt'
+                        if (totalAvailable === 0) {
+                            console.log(`✅ PIF completed - updating tag to 'ex pt'`);
+                            
+                            // Remove 'PT pif' tag and add 'ex pt' tag
+                            const updatedTags = contact.tags.filter(t => t !== 'PT pif');
+                            updatedTags.push('ex pt');
+                            
+                            await axios.put(`${GHL_API_URL}/contacts/${contact.id}`, {
+                                tags: updatedTags
+                            }, { headers: headers });
+                            
+                            clubResult.completed++;
+                            results.completed++;
+                            
+                            clubResult.members.push({
+                                email: contact.email,
+                                name: `${contact.firstName} ${contact.lastName}`,
+                                availableSessions: totalAvailable,
+                                action: 'completed'
+                            });
+                        } else {
+                            console.log(`Still has ${totalAvailable} sessions remaining`);
+                            clubResult.stillActive++;
+                            results.stillActive++;
+                            
+                            clubResult.members.push({
+                                email: contact.email,
+                                name: `${contact.firstName} ${contact.lastName}`,
+                                availableSessions: totalAvailable,
+                                action: 'still_active'
+                            });
+                        }
+                        
+                    } catch (memberError) {
+                        clubResult.errors++;
+                        results.errors++;
+                        console.error(`Error checking member: ${memberError.message}`);
+                    }
+                }
+                
+            } catch (clubError) {
+                clubResult.errors++;
+                results.errors++;
+                console.error(`Error processing club ${club.clubName}:`, clubError.message);
+            }
+            
+            results.clubs.push(clubResult);
+        }
+        
+        console.log(`\n=== ALL CLUBS - PIF Completion Check Complete ===`);
+        console.log(`Total Clubs: ${results.totalClubs}`);
+        console.log(`Total Checked: ${results.totalChecked}`);
+        console.log(`Completed: ${results.completed}`);
+        console.log(`Still Active: ${results.stillActive}`);
+        console.log(`Not Found: ${results.notFound}`);
+        console.log(`Errors: ${results.errors}`);
+        
+        res.json({
+            success: true,
+            message: 'Multi-club PIF completion check completed',
+            results: results,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('PIF completion check error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Master sync endpoint - runs ALL syncs and sends one summary email
 app.post('/api/sync-all', async (req, res) => {
     console.log('\n🚀 Starting Master Sync - All Endpoints');
@@ -2203,7 +2422,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 2. Sync cancelled members
-        console.log('\n📝 [2/5] Running cancelled members sync...');
+        console.log('\n📝 [2/6] Running cancelled members sync...');
         try {
             const cancelledResponse = await axios.post(`http://localhost:${PORT}/api/sync-cancelled`, {});
             masterResults.syncs.cancelledMembers = {
@@ -2220,7 +2439,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 3. Sync past due members
-        console.log('\n📝 [3/5] Running past due members sync...');
+        console.log('\n📝 [3/6] Running past due members sync...');
         try {
             const pastDueResponse = await axios.post(`http://localhost:${PORT}/api/sync-past-due`, {});
             masterResults.syncs.pastDueMembers = {
@@ -2237,7 +2456,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 4. Sync new PT services
-        console.log('\n📝 [4/5] Running new PT services sync...');
+        console.log('\n📝 [4/6] Running new PT services sync...');
         try {
             const ptNewResponse = await axios.post(`http://localhost:${PORT}/api/sync-pt-new`, {});
             masterResults.syncs.newPTServices = {
@@ -2254,7 +2473,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 5. Sync deactivated PT services
-        console.log('\n📝 [5/5] Running deactivated PT services sync...');
+        console.log('\n📝 [5/6] Running deactivated PT services sync...');
         try {
             const ptDeactivatedResponse = await axios.post(`http://localhost:${PORT}/api/sync-pt-deactivated`, {});
             masterResults.syncs.deactivatedPTServices = {
@@ -2268,6 +2487,23 @@ app.post('/api/sync-all', async (req, res) => {
                 error: error.message
             };
             console.error('❌ Deactivated PT services sync failed:', error.message);
+        }
+        
+        // 6. Check PIF completions
+        console.log('\n📝 [6/6] Running PIF completion check...');
+        try {
+            const pifCompletedResponse = await axios.post(`http://localhost:${PORT}/api/sync-pif-completed`, {});
+            masterResults.syncs.pifCompleted = {
+                success: true,
+                results: pifCompletedResponse.data.results
+            };
+            console.log('✅ PIF completion check complete');
+        } catch (error) {
+            masterResults.syncs.pifCompleted = {
+                success: false,
+                error: error.message
+            };
+            console.error('❌ PIF completion check failed:', error.message);
         }
         
         // Calculate duration
