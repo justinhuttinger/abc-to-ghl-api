@@ -290,11 +290,12 @@ async function makeABCRequest(endpoint, params = {}) {
     try {
         const url = `${ABC_API_URL}${endpoint}`;
         const response = await axios.get(url, {
-            params: {
-                ...params,
-                app_id: ABC_APP_ID,
-                app_key: ABC_APP_KEY
+            headers: {
+                'accept': 'application/json',
+                'app_id': ABC_APP_ID,
+                'app_key': ABC_APP_KEY
             },
+            params: params,
             timeout: 30000
         });
         return response.data;
@@ -1453,6 +1454,122 @@ app.get('/api/test-email', async (req, res) => {
             error: error.message
         });
     }
+});
+
+// Diagnostic endpoint to check configuration
+app.get('/api/diagnostics', async (req, res) => {
+    console.log('Running diagnostics...');
+    
+    const diagnostics = {
+        timestamp: new Date().toISOString(),
+        environment: {
+            ABC_API_URL: ABC_API_URL,
+            ABC_APP_ID: ABC_APP_ID ? `Set (${ABC_APP_ID.substring(0, 8)}...)` : 'NOT SET',
+            ABC_APP_KEY: ABC_APP_KEY ? `Set (${ABC_APP_KEY.length} chars)` : 'NOT SET',
+            GHL_API_URL: GHL_API_URL,
+            EMAIL_ENABLED: emailEnabled
+        },
+        clubs: {
+            total: clubsConfig.clubs.length,
+            enabled: clubsConfig.clubs.filter(c => c.enabled !== false).length,
+            list: clubsConfig.clubs.map(c => ({
+                name: c.clubName,
+                number: c.clubNumber,
+                enabled: c.enabled !== false,
+                hasGHLLocation: !!c.ghlLocationId,
+                hasGHLToken: !!c.ghlAccessToken
+            }))
+        },
+        tests: {}
+    };
+    
+    // Test ABC API connection
+    try {
+        console.log('Testing ABC API connection...');
+        const testUrl = `${ABC_API_URL}/members`;
+        const testClub = clubsConfig.clubs[0];
+        
+        if (!testClub) {
+            diagnostics.tests.abc_api = {
+                status: 'SKIPPED',
+                message: 'No clubs configured'
+            };
+        } else {
+            const response = await axios.get(testUrl, {
+                params: {
+                    club_number: testClub.clubNumber,
+                    limit: 1,
+                    app_id: ABC_APP_ID,
+                    app_key: ABC_APP_KEY
+                },
+                timeout: 10000
+            });
+            
+            diagnostics.tests.abc_api = {
+                status: 'SUCCESS',
+                message: 'ABC API credentials are valid',
+                testClub: testClub.clubName,
+                responseStatus: response.status
+            };
+        }
+    } catch (error) {
+        diagnostics.tests.abc_api = {
+            status: 'FAILED',
+            message: error.message,
+            errorDetails: error.response ? {
+                status: error.response.status,
+                statusText: error.response.statusText,
+                data: error.response.data
+            } : 'No response from server'
+        };
+    }
+    
+    // Test GHL API connection
+    try {
+        console.log('Testing GHL API connection...');
+        const testClub = clubsConfig.clubs.find(c => c.ghlAccessToken);
+        
+        if (!testClub) {
+            diagnostics.tests.ghl_api = {
+                status: 'SKIPPED',
+                message: 'No clubs with GHL access token configured'
+            };
+        } else {
+            const response = await axios.get(
+                `${GHL_API_URL}/contacts/`,
+                {
+                    params: {
+                        locationId: testClub.ghlLocationId,
+                        limit: 1
+                    },
+                    headers: {
+                        'Authorization': `Bearer ${testClub.ghlAccessToken}`,
+                        'Version': '2021-07-28'
+                    },
+                    timeout: 10000
+                }
+            );
+            
+            diagnostics.tests.ghl_api = {
+                status: 'SUCCESS',
+                message: 'GHL API credentials are valid',
+                testClub: testClub.clubName,
+                responseStatus: response.status
+            };
+        }
+    } catch (error) {
+        diagnostics.tests.ghl_api = {
+            status: 'FAILED',
+            message: error.message,
+            errorDetails: error.response ? {
+                status: error.response.status,
+                statusText: error.response.statusText,
+                data: error.response.data
+            } : 'No response from server'
+        };
+    }
+    
+    res.json(diagnostics);
 });
 
 // 404 handler
