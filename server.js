@@ -557,8 +557,7 @@ app.post('/api/sync-new', async (req, res) => {
             try {
                 // Fetch members with signDate parameter
                 console.log(`   Fetching members with signDate >= ${startDate}...`);
-                const membersData = await makeABCRequest('/members', {
-                    club_number: club.clubNumber,
+                const membersData = await makeABCRequest(`/${club.clubNumber}/members`, {
                     signDate: startDate,  // Use signDate parameter
                     limit: 1000
                 });
@@ -675,8 +674,7 @@ app.post('/api/sync-cancelled', async (req, res) => {
             try {
                 // Fetch cancelled members with cancelDate parameter
                 console.log(`   Fetching cancelled members with cancelDate >= ${startDate}...`);
-                const membersData = await makeABCRequest('/members', {
-                    club_number: club.clubNumber,
+                const membersData = await makeABCRequest(`/${club.clubNumber}/members`, {
                     cancelDate: startDate,  // Use cancelDate parameter
                     status: 'C',
                     limit: 1000
@@ -830,8 +828,7 @@ app.post('/api/sync-past-due', async (req, res) => {
             try {
                 // Fetch past due members (3 days past due)
                 console.log(`   Fetching members with 3 days past due...`);
-                const membersData = await makeABCRequest('/members', {
-                    club_number: club.clubNumber,
+                const membersData = await makeABCRequest(`/${club.clubNumber}/members`, {
                     past_due_days: 3,
                     limit: 1000
                 });
@@ -970,8 +967,7 @@ app.post('/api/sync-pt-new', async (req, res) => {
             try {
                 // Fetch new PT services with startDate parameter
                 console.log(`   Fetching PT services with startDate >= ${startDate}...`);
-                const servicesData = await makeABCRequest('/services', {
-                    club_number: club.clubNumber,
+                const servicesData = await makeABCRequest(`/${club.clubNumber}/members/recurringservices`, {
                     service_name: 'Personal Training',
                     startDate: startDate,  // Use startDate parameter for services
                     status: 'active',
@@ -1135,8 +1131,7 @@ app.post('/api/sync-pt-deactivated', async (req, res) => {
             try {
                 // Fetch deactivated PT services with endDate parameter
                 console.log(`   Fetching deactivated PT services with endDate >= ${startDate}...`);
-                const servicesData = await makeABCRequest('/services', {
-                    club_number: club.clubNumber,
+                const servicesData = await makeABCRequest(`/${club.clubNumber}/members/recurringservices`, {
                     service_name: 'Personal Training',
                     endDate: startDate,  // Use endDate parameter for deactivated services
                     status: 'inactive',
@@ -1486,7 +1481,6 @@ app.get('/api/diagnostics', async (req, res) => {
     // Test ABC API connection
     try {
         console.log('Testing ABC API connection...');
-        const testUrl = `${ABC_API_URL}/members`;
         const testClub = clubsConfig.clubs[0];
         
         if (!testClub) {
@@ -1495,12 +1489,15 @@ app.get('/api/diagnostics', async (req, res) => {
                 message: 'No clubs configured'
             };
         } else {
+            const testUrl = `${ABC_API_URL}/${testClub.clubNumber}/members`;
             const response = await axios.get(testUrl, {
                 params: {
-                    club_number: testClub.clubNumber,
-                    limit: 1,
-                    app_id: ABC_APP_ID,
-                    app_key: ABC_APP_KEY
+                    limit: 1
+                },
+                headers: {
+                    'accept': 'application/json',
+                    'app_id': ABC_APP_ID,
+                    'app_key': ABC_APP_KEY
                 },
                 timeout: 10000
             });
