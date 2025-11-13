@@ -2,24 +2,24 @@
   "clubs": [
     {
       "clubNumber": "30935",
-      "clubName": "Club 1",
-      "ghlLocationId": "GjtINe5Nv5RwS5BVM9gY",
-      "ghlApiKey": "pit-92120ef0-6eae-4d30-874f-77ad7829e7ee",
+      "clubName": "Salem",
+      "ghlLocationId": "uflpfHNpByAnaBLkQzu3",
+      "ghlApiKey": "pit-e5bcddc8-6b42-4626-acaa-c471165b4fc4",
       "enabled": true
     },
     {
-      "clubNumber": "30936",
-      "clubName": "Club 2",
-      "ghlLocationId": "YOUR_GHL_LOCATION_ID_2",
-      "ghlApiKey": "YOUR_GHL_API_KEY_2",
-      "enabled": false
+      "clubNumber": "31599",
+      "clubName": "Keizer",
+      "ghlLocationId": "g75BBgiSvlCRbvxYRMAb",
+      "ghlApiKey": "pit-e3b763e5-358e-46ac-a8a0-59d66f3f0b73",
+      "enabled": true
     },
     {
-      "clubNumber": "30937",
-      "clubName": "Club 3",
-      "ghlLocationId": "YOUR_GHL_LOCATION_ID_3",
-      "ghlApiKey": "YOUR_GHL_API_KEY_3",
-      "enabled": false
+      "clubNumber": "07655",
+      "clubName": "Eugene",
+      "ghlLocationId": "NNTZT21fPm3SxpLg8s04",
+      "ghlApiKey": "pit-822d1e4a-2123-4b3b-83f8-76c0a744db56",
+      "enabled": true
     },
     {
       "clubNumber": "30938",
