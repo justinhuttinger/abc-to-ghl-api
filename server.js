@@ -2548,6 +2548,11 @@ app.post('/api/sync-pif-completed', async (req, res) => {
     }
 });
 
+// ====================================
+// FIXED MASTER SYNC ENDPOINT - COPY THIS INTO YOUR server.js
+// Replace the entire app.post('/api/sync-all', ...) endpoint with this code
+// ====================================
+
 // Master sync endpoint - runs ALL syncs and sends one summary email
 app.post('/api/sync-all', async (req, res) => {
     console.log('\n🚀 Starting Master Sync - All Endpoints');
@@ -2559,9 +2564,17 @@ app.post('/api/sync-all', async (req, res) => {
         syncs: {}
     };
     
+    // ✅ RESPOND IMMEDIATELY - This prevents timeout and rate limit errors
+    res.json({
+        success: true,
+        message: 'Master sync initiated successfully - running in background',
+        timestamp: new Date().toISOString()
+    });
+    
+    // Now run all the syncs in the background (after we've already responded)
     try {
         // 1. Sync new members (yesterday)
-        console.log('\n📝 [1/5] Running new members sync...');
+        console.log('\n📝 [1/6] Running new members sync...');
         try {
             const syncResponse = await axios.post(`http://localhost:${PORT}/api/sync`, {});
             masterResults.syncs.newMembers = {
@@ -2673,13 +2686,6 @@ app.post('/api/sync-all', async (req, res) => {
         // Send comprehensive email
         await sendMasterSyncEmail(masterResults);
         
-        res.json({
-            success: true,
-            message: 'Master sync completed - all endpoints processed',
-            results: masterResults,
-            timestamp: new Date().toISOString()
-        });
-        
     } catch (error) {
         console.error('Master sync error:', error);
         
@@ -2688,12 +2694,6 @@ app.post('/api/sync-all', async (req, res) => {
         
         // Send error email
         await sendMasterSyncEmail(masterResults, false);
-        
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            results: masterResults
-        });
     }
 });
 
