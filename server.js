@@ -2441,17 +2441,22 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                         clubResult.checked++;
                         results.totalChecked++;
                         
+                        // Fetch full contact details to get custom fields
+                        console.log(`\nFetching full details for ${contact.firstName} ${contact.lastName}...`);
+                        const fullContactResponse = await axios.get(`${GHL_API_URL}/contacts/${contact.id}`, { headers: headers });
+                        const fullContact = fullContactResponse.data.contact || contact;
+                        
                         // Get abc_member_id from custom fields
-                        const abcMemberId = contact.customFields?.find(f => f.key === 'abc_member_id')?.value;
+                        const abcMemberId = fullContact.customFields?.find(f => f.key === 'abc_member_id')?.value;
                         
                         if (!abcMemberId) {
-                            console.log(`⚠️ No ABC Member ID for ${contact.email}`);
+                            console.log(`⚠️ No ABC Member ID for ${fullContact.email}`);
                             clubResult.notFound++;
                             results.notFound++;
                             continue;
                         }
                         
-                        console.log(`\nChecking session balance for ${contact.firstName} ${contact.lastName} (${abcMemberId})`);
+                        console.log(`Checking session balance for ${fullContact.firstName} ${fullContact.lastName} (${abcMemberId})`);
                         
                         // Fetch service purchase history from ABC
                         const abcUrl = `${ABC_API_URL}/${club.clubNumber}/members/${abcMemberId}/services/purchasehistory`;
@@ -2479,12 +2484,12 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                             console.log(`✅ PIF completed - adding 'ex pt' tag`);
                             
                             // Keep 'pt pif' tag and add 'ex pt' tag
-                            const updatedTags = [...contact.tags];
+                            const updatedTags = [...fullContact.tags];
                             if (!updatedTags.includes('ex pt')) {
                                 updatedTags.push('ex pt');
                             }
                             
-                            await axios.put(`${GHL_API_URL}/contacts/${contact.id}`, {
+                            await axios.put(`${GHL_API_URL}/contacts/${fullContact.id}`, {
                                 tags: updatedTags
                             }, { headers: headers });
                             
@@ -2492,8 +2497,8 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                             results.completed++;
                             
                             clubResult.members.push({
-                                email: contact.email,
-                                name: `${contact.firstName} ${contact.lastName}`,
+                                email: fullContact.email,
+                                name: `${fullContact.firstName} ${fullContact.lastName}`,
                                 availableSessions: totalAvailable,
                                 action: 'completed'
                             });
@@ -2501,11 +2506,11 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                             console.log(`⚠️ Only 2 sessions remaining - adding warning tag`);
                             
                             // Add '2 sessions left' tag if not already present
-                            const updatedTags = [...contact.tags];
+                            const updatedTags = [...fullContact.tags];
                             if (!updatedTags.includes('pt pif 2 sessions')) {
                                 updatedTags.push('pt pif 2 sessions');
                                 
-                                await axios.put(`${GHL_API_URL}/contacts/${contact.id}`, {
+                                await axios.put(`${GHL_API_URL}/contacts/${fullContact.id}`, {
                                     tags: updatedTags
                                 }, { headers: headers });
                                 
@@ -2518,8 +2523,8 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                             results.stillActive++;
                             
                             clubResult.members.push({
-                                email: contact.email,
-                                name: `${contact.firstName} ${contact.lastName}`,
+                                email: fullContact.email,
+                                name: `${fullContact.firstName} ${fullContact.lastName}`,
                                 availableSessions: totalAvailable,
                                 action: 'low_sessions'
                             });
@@ -2529,8 +2534,8 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                             results.stillActive++;
                             
                             clubResult.members.push({
-                                email: contact.email,
-                                name: `${contact.firstName} ${contact.lastName}`,
+                                email: fullContact.email,
+                                name: `${fullContact.firstName} ${fullContact.lastName}`,
                                 availableSessions: totalAvailable,
                                 action: 'still_active'
                             });
