@@ -2446,6 +2446,9 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                         const fullContactResponse = await axios.get(`${GHL_API_URL}/contacts/${contact.id}`, { headers: headers });
                         const fullContact = fullContactResponse.data.contact || contact;
                         
+                        // DEBUG: Log custom fields structure
+                        console.log(`Custom fields for ${fullContact.email}:`, JSON.stringify(fullContact.customFields, null, 2));
+                        
                         // Get abc_member_id from custom fields
                         const abcMemberId = fullContact.customFields?.find(f => f.key === 'abc_member_id')?.value;
                         
