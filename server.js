@@ -2383,6 +2383,18 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                     'Content-Type': 'application/json'
                 };
                 
+                console.log('Fetching custom fields definitions...');
+                // Fetch custom fields to get ID to key mapping
+                const customFieldsResponse = await axios.get(`${GHL_API_URL}/locations/${club.ghlLocationId}/customFields`, { headers: headers });
+                const customFieldsDefs = customFieldsResponse.data.customFields || [];
+                
+                // Create a map of id -> key
+                const fieldIdToKey = {};
+                customFieldsDefs.forEach(field => {
+                    fieldIdToKey[field.id] = field.key;
+                });
+                console.log(`Loaded ${customFieldsDefs.length} custom field definitions`);
+                
                 console.log('Fetching ALL GHL contacts with PT pif tag (paginated search)...');
                 
                 // Paginate through ALL contacts with PT pif tag
@@ -2446,11 +2458,17 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                         const fullContactResponse = await axios.get(`${GHL_API_URL}/contacts/${contact.id}`, { headers: headers });
                         const fullContact = fullContactResponse.data.contact || contact;
                         
-                        // DEBUG: Log custom fields structure
-                        console.log(`Custom fields for ${fullContact.email}:`, JSON.stringify(fullContact.customFields, null, 2));
-                        
-                        // Get abc_member_id from custom fields
-                        const abcMemberId = fullContact.customFields?.find(f => f.key === 'abc_member_id')?.value;
+                        // Get abc_member_id from custom fields using ID mapping
+                        let abcMemberId = null;
+                        if (fullContact.customFields && Array.isArray(fullContact.customFields)) {
+                            for (const field of fullContact.customFields) {
+                                const fieldKey = fieldIdToKey[field.id];
+                                if (fieldKey === 'abc_member_id') {
+                                    abcMemberId = field.value;
+                                    break;
+                                }
+                            }
+                        }
                         
                         if (!abcMemberId) {
                             console.log(`⚠️ No ABC Member ID for ${fullContact.email}`);
