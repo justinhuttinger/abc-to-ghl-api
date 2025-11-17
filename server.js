@@ -2065,7 +2065,7 @@ if (!startDate && !endDate) {
                         member.ptSignDate = service.recurringServiceDates?.saleDate || '';
                         
                         // Determine tag based on service type
-                        const ptTag = service.recurringServiceSubStatus === 'Paid in Full' ? 'PT pif' : 'pt current';
+                        const ptTag = service.recurringServiceSubStatus === 'Paid in Full' ? 'pt pif' : 'pt current';
                         
                         // Create/update contact in GHL with appropriate tag and service employee using club-specific credentials
                         const result = await syncContactToGHL(member, club.ghlApiKey, club.ghlLocationId, ptTag, serviceEmployee || null);
@@ -2399,7 +2399,7 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                             {
                                 field: "tags",
                                 operator: "eq",
-                                value: "PT pif"
+                                value: "pt pif"
                             }
                         ]
                     };
@@ -2476,11 +2476,13 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                         
                         // If no sessions left, update tag to 'ex pt'
                         if (totalAvailable === 0) {
-                            console.log(`✅ PIF completed - updating tag to 'ex pt'`);
+                            console.log(`✅ PIF completed - adding 'ex pt' tag`);
                             
-                            // Remove 'PT pif' tag and add 'ex pt' tag
-                            const updatedTags = contact.tags.filter(t => t !== 'PT pif');
-                            updatedTags.push('ex pt');
+                            // Keep 'pt pif' tag and add 'ex pt' tag
+                            const updatedTags = [...contact.tags];
+                            if (!updatedTags.includes('ex pt')) {
+                                updatedTags.push('ex pt');
+                            }
                             
                             await axios.put(`${GHL_API_URL}/contacts/${contact.id}`, {
                                 tags: updatedTags
@@ -2494,6 +2496,32 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                                 name: `${contact.firstName} ${contact.lastName}`,
                                 availableSessions: totalAvailable,
                                 action: 'completed'
+                            });
+                        } else if (totalAvailable === 2) {
+                            console.log(`⚠️ Only 2 sessions remaining - adding warning tag`);
+                            
+                            // Add '2 sessions left' tag if not already present
+                            const updatedTags = [...contact.tags];
+                            if (!updatedTags.includes('pt pif 2 sessions')) {
+                                updatedTags.push('pt pif 2 sessions');
+                                
+                                await axios.put(`${GHL_API_URL}/contacts/${contact.id}`, {
+                                    tags: updatedTags
+                                }, { headers: headers });
+                                
+                                console.log(`✅ Added 'pt pif 2 sessions' tag`);
+                            } else {
+                                console.log(`Tag 'pt pif 2 sessions' already exists`);
+                            }
+                            
+                            clubResult.stillActive++;
+                            results.stillActive++;
+                            
+                            clubResult.members.push({
+                                email: contact.email,
+                                name: `${contact.firstName} ${contact.lastName}`,
+                                availableSessions: totalAvailable,
+                                action: 'low_sessions'
                             });
                         } else {
                             console.log(`Still has ${totalAvailable} sessions remaining`);
@@ -2548,11 +2576,6 @@ app.post('/api/sync-pif-completed', async (req, res) => {
     }
 });
 
-// ====================================
-// FIXED MASTER SYNC ENDPOINT - COPY THIS INTO YOUR server.js
-// Replace the entire app.post('/api/sync-all', ...) endpoint with this code
-// ====================================
-
 // Master sync endpoint - runs ALL syncs and sends one summary email
 app.post('/api/sync-all', async (req, res) => {
     console.log('\n🚀 Starting Master Sync - All Endpoints');
@@ -2564,17 +2587,9 @@ app.post('/api/sync-all', async (req, res) => {
         syncs: {}
     };
     
-    // ✅ RESPOND IMMEDIATELY - This prevents timeout and rate limit errors
-    res.json({
-        success: true,
-        message: 'Master sync initiated successfully - running in background',
-        timestamp: new Date().toISOString()
-    });
-    
-    // Now run all the syncs in the background (after we've already responded)
     try {
         // 1. Sync new members (yesterday)
-        console.log('\n📝 [1/6] Running new members sync...');
+        console.log('\n📝 [1/5] Running new members sync...');
         try {
             const syncResponse = await axios.post(`http://localhost:${PORT}/api/sync`, {});
             masterResults.syncs.newMembers = {
@@ -2686,6 +2701,13 @@ app.post('/api/sync-all', async (req, res) => {
         // Send comprehensive email
         await sendMasterSyncEmail(masterResults);
         
+        res.json({
+            success: true,
+            message: 'Master sync completed - all endpoints processed',
+            results: masterResults,
+            timestamp: new Date().toISOString()
+        });
+        
     } catch (error) {
         console.error('Master sync error:', error);
         
@@ -2694,6 +2716,12 @@ app.post('/api/sync-all', async (req, res) => {
         
         // Send error email
         await sendMasterSyncEmail(masterResults, false);
+        
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            results: masterResults
+        });
     }
 });
 
