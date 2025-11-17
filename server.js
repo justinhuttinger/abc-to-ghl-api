@@ -2383,18 +2383,6 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                     'Content-Type': 'application/json'
                 };
                 
-                console.log('Fetching custom fields definitions...');
-                // Fetch custom fields to get ID to key mapping
-                const customFieldsResponse = await axios.get(`${GHL_API_URL}/locations/${club.ghlLocationId}/customFields`, { headers: headers });
-                const customFieldsDefs = customFieldsResponse.data.customFields || [];
-                
-                // Create a map of id -> key
-                const fieldIdToKey = {};
-                customFieldsDefs.forEach(field => {
-                    fieldIdToKey[field.id] = field.key;
-                });
-                console.log(`Loaded ${customFieldsDefs.length} custom field definitions`);
-                
                 console.log('Fetching ALL GHL contacts with PT pif tag (paginated search)...');
                 
                 // Paginate through ALL contacts with PT pif tag
@@ -2458,13 +2446,16 @@ app.post('/api/sync-pif-completed', async (req, res) => {
                         const fullContactResponse = await axios.get(`${GHL_API_URL}/contacts/${contact.id}`, { headers: headers });
                         const fullContact = fullContactResponse.data.contact || contact;
                         
-                        // Get abc_member_id from custom fields using ID mapping
+                        // Get abc_member_id from custom fields
+                        // ABC member IDs are 32-character hex strings (like "54c1774a5edc43a495747dfbdef6abd3")
                         let abcMemberId = null;
                         if (fullContact.customFields && Array.isArray(fullContact.customFields)) {
                             for (const field of fullContact.customFields) {
-                                const fieldKey = fieldIdToKey[field.id];
-                                if (fieldKey === 'abc_member_id') {
-                                    abcMemberId = field.value;
+                                const value = field.value;
+                                // Look for a 32-character hex string (ABC member ID pattern)
+                                if (typeof value === 'string' && /^[a-f0-9]{32}$/i.test(value)) {
+                                    abcMemberId = value;
+                                    console.log(`Found ABC Member ID: ${abcMemberId}`);
                                     break;
                                 }
                             }
