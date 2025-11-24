@@ -22,11 +22,11 @@
       "enabled": true
     },
     {
-      "clubNumber": "30938",
-      "clubName": "Club 4",
-      "ghlLocationId": "YOUR_GHL_LOCATION_ID_4",
-      "ghlApiKey": "YOUR_GHL_API_KEY_4",
-      "enabled": false
+      "clubNumber": "31601",
+      "clubName": "Milwaukie",
+      "ghlLocationId": "BQfUepBFzqVan4ruCQ6R",
+      "ghlApiKey": "pit-08671077-536e-47ba-8814-974cc339e97f",
+      "enabled": true
     },
     {
       "clubNumber": "31600",
