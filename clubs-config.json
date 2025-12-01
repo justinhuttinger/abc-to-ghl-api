@@ -41,6 +41,13 @@
       "ghlLocationId": "xXV3CXt5DkgfGnTt8CG1",
       "ghlApiKey": "pit-5709f4e6-62ff-4c62-b304-86ee6a5073a8",
       "enabled": true
+    },
+    {
+      "clubNumber": "32073",
+      "clubName": "Medford",
+      "ghlLocationId": "ZxcRZBvwIO7vd4D3bjJO",
+      "ghlApiKey": "pit-9763fdaa-34d2-4ed7-b010-26e1232437d1",
+      "enabled": true
     }
   ]
 }
