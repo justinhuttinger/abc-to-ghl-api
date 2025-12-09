@@ -1070,7 +1070,7 @@ async function syncContactToGHL(member, ghlApiKey, ghlLocationId, customTag = 's
                 { key: 'membership_type', value: agreement.membershipType || '' },
                 { key: 'payment_plan', value: agreement.paymentPlan || '' },
                 { key: 'agreement_number', value: agreement.agreementNumber || '' },
-                { key: 'sales_person', value: agreement.salesPersonName || '' },
+                { key: 'sale_team_member', value: agreement.salesPersonName || '' },
                 { key: 'converted_date', value: agreement.convertedDate || '' },
                 { key: 'member_sign_date', value: agreement.signDate || '' },
                 { key: 'next_billing_date', value: agreement.nextBillingDate || '' },
