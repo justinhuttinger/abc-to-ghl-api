@@ -2728,22 +2728,14 @@ app.post('/api/sync-employees', async (req, res) => {
         clubs: []
     };
     
-    // Get the employee field ID from config
-    const employeeFieldId = clubsConfig.ghlEmployeeFieldId;
-    
-    if (!employeeFieldId) {
-        return res.status(400).json({
-            success: false,
-            error: 'ghlEmployeeFieldId not configured in clubs-config.json'
-        });
-    }
-    
     try {
-        // Get enabled clubs
-        const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
+        // Get enabled clubs that have an employee field ID configured
+        const enabledClubs = clubsConfig.clubs.filter(club => 
+            club.enabled !== false && club.ghlEmployeeFieldId
+        );
         results.totalClubs = enabledClubs.length;
         
-        console.log(`Processing ${enabledClubs.length} enabled clubs...`);
+        console.log(`Processing ${enabledClubs.length} enabled clubs with employee field configured...`);
         
         for (const club of enabledClubs) {
             console.log(`\n--- Processing ${club.clubName} (${club.clubNumber}) ---`);
@@ -2769,10 +2761,10 @@ app.post('/api/sync-employees', async (req, res) => {
                     clubResult.error = 'No active employees found';
                     results.skipped++;
                 } else {
-                    // 2. Update GHL dropdown
+                    // 2. Update GHL dropdown using club-specific field ID
                     const updateResult = await updateGHLEmployeeDropdown(
                         club.ghlLocationId,
-                        employeeFieldId,
+                        club.ghlEmployeeFieldId,
                         employees,
                         club.ghlApiKey
                     );
