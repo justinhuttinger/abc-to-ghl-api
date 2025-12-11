@@ -1311,6 +1311,127 @@ async function addTagToContact(memberEmail, ghlApiKey, ghlLocationId, customTag,
     }
 }
 
+/**
+ * Fetch active employees from ABC
+ * @param {string} clubNumber - The club number
+ * @returns {Promise<Array>} Array of active employee names
+ */
+async function fetchEmployeesFromABC(clubNumber) {
+    try {
+        const url = `${ABC_API_URL}/${clubNumber}/employees`;
+        
+        console.log(`Fetching employees from ABC club ${clubNumber}...`);
+        
+        const response = await axios.get(url, {
+            headers: {
+                'accept': 'application/json',
+                'app_id': ABC_APP_ID,
+                'app_key': ABC_APP_KEY
+            }
+        });
+        
+        const employees = response.data.employees || [];
+        
+        console.log(`Found ${employees.length} total employees from ABC`);
+        
+        // Filter for active employees and exclude bots/test accounts
+        const excludedNames = [
+            'easalytics bot', 'click2save bot', 'reporting bot', 
+            'abc support', 'test test', 'personal trainer'
+        ];
+        
+        const employeeNames = employees
+            .filter(emp => {
+                // Filter for active employees only
+                const status = emp.employment?.employeeStatus?.toLowerCase();
+                if (status !== 'active') return false;
+                
+                // Exclude bot/test accounts
+                const fullName = `${emp.personal?.firstName || ''} ${emp.personal?.lastName || ''}`.toLowerCase().trim();
+                if (excludedNames.includes(fullName)) return false;
+                
+                return true;
+            })
+            .map(emp => {
+                const firstName = emp.personal?.firstName || '';
+                const lastName = emp.personal?.lastName || '';
+                return `${firstName} ${lastName}`.trim();
+            })
+            .filter(name => name.length > 0)
+            .sort(); // Sort alphabetically
+        
+        console.log(`Filtered to ${employeeNames.length} active employees (excluding bots/test accounts)`);
+        
+        return employeeNames;
+        
+    } catch (error) {
+        console.error('Error fetching employees from ABC:', error.message);
+        if (error.response) {
+            console.error('ABC API Response:', error.response.data);
+        }
+        throw new Error(`ABC API Error: ${error.response?.data?.message || error.message}`);
+    }
+}
+
+/**
+ * Update GHL custom field dropdown options
+ * @param {string} locationId - GHL location ID
+ * @param {string} fieldId - Custom field ID
+ * @param {Array<string>} options - New dropdown options
+ * @param {string} apiKey - GHL API key for this location
+ * @returns {Promise<Object>} Result of the update
+ */
+async function updateGHLEmployeeDropdown(locationId, fieldId, options, apiKey) {
+    try {
+        // First, get the current field to preserve the name
+        const getResponse = await axios.get(
+            `https://services.leadconnectorhq.com/locations/${locationId}/customFields/${fieldId}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Version': '2021-07-28',
+                    'Accept': 'application/json'
+                }
+            }
+        );
+        
+        const currentField = getResponse.data.customField || getResponse.data;
+        const fieldName = currentField.name || 'Tour Team Member';
+        
+        console.log(`Updating GHL field "${fieldName}" with ${options.length} options...`);
+        
+        // Update the field with new options
+        const updateResponse = await axios.put(
+            `https://services.leadconnectorhq.com/locations/${locationId}/customFields/${fieldId}`,
+            {
+                name: fieldName,
+                options: options
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json',
+                    'Version': '2021-07-28'
+                }
+            }
+        );
+        
+        return {
+            success: true,
+            fieldName: fieldName,
+            optionsCount: options.length,
+            options: options
+        };
+        
+    } catch (error) {
+        console.error('Error updating GHL dropdown:', error.message);
+        if (error.response) {
+            console.error('GHL API Response:', error.response.data);
+        }
+        throw new Error(`GHL API Error: ${error.response?.data?.message || error.message}`);
+    }
+}
+
 // ====================================
 // API ENDPOINTS
 // ====================================
@@ -2593,6 +2714,151 @@ app.post('/api/sync-pif-completed', async (req, res) => {
     }
 });
 
+// Sync employees from ABC to GHL dropdown
+app.post('/api/sync-employees', async (req, res) => {
+    console.log('\n========================================');
+    console.log('EMPLOYEE SYNC: ABC → GHL Dropdown');
+    console.log('========================================');
+    
+    const results = {
+        totalClubs: 0,
+        synced: 0,
+        skipped: 0,
+        errors: 0,
+        clubs: []
+    };
+    
+    // Get the employee field ID from config
+    const employeeFieldId = clubsConfig.ghlEmployeeFieldId;
+    
+    if (!employeeFieldId) {
+        return res.status(400).json({
+            success: false,
+            error: 'ghlEmployeeFieldId not configured in clubs-config.json'
+        });
+    }
+    
+    try {
+        // Get enabled clubs
+        const enabledClubs = clubsConfig.clubs.filter(club => club.enabled !== false);
+        results.totalClubs = enabledClubs.length;
+        
+        console.log(`Processing ${enabledClubs.length} enabled clubs...`);
+        
+        for (const club of enabledClubs) {
+            console.log(`\n--- Processing ${club.clubName} (${club.clubNumber}) ---`);
+            
+            const clubResult = {
+                clubName: club.clubName,
+                clubNumber: club.clubNumber,
+                employees: [],
+                employeeCount: 0,
+                status: 'pending',
+                error: null
+            };
+            
+            try {
+                // 1. Fetch employees from ABC
+                const employees = await fetchEmployeesFromABC(club.clubNumber);
+                clubResult.employees = employees;
+                clubResult.employeeCount = employees.length;
+                
+                if (employees.length === 0) {
+                    console.log(`⚠️ No active employees found for ${club.clubName}`);
+                    clubResult.status = 'skipped';
+                    clubResult.error = 'No active employees found';
+                    results.skipped++;
+                } else {
+                    // 2. Update GHL dropdown
+                    const updateResult = await updateGHLEmployeeDropdown(
+                        club.ghlLocationId,
+                        employeeFieldId,
+                        employees,
+                        club.ghlApiKey
+                    );
+                    
+                    console.log(`✅ Updated ${club.clubName} with ${employees.length} employees`);
+                    clubResult.status = 'synced';
+                    results.synced++;
+                }
+                
+            } catch (error) {
+                console.error(`❌ Error syncing ${club.clubName}:`, error.message);
+                clubResult.status = 'error';
+                clubResult.error = error.message;
+                results.errors++;
+            }
+            
+            results.clubs.push(clubResult);
+            
+            // Small delay between clubs to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        console.log('\n========================================');
+        console.log('EMPLOYEE SYNC COMPLETE');
+        console.log(`Synced: ${results.synced}, Skipped: ${results.skipped}, Errors: ${results.errors}`);
+        console.log('========================================\n');
+        
+        res.json({
+            success: true,
+            message: 'Employee sync completed',
+            results: results,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Employee sync error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            results: results
+        });
+    }
+});
+
+// Test endpoint to check ABC employee data structure
+app.get('/api/test-employees/:clubNumber', async (req, res) => {
+    const { clubNumber } = req.params;
+    
+    console.log(`Testing employee fetch for club ${clubNumber}...`);
+    
+    try {
+        const url = `${ABC_API_URL}/${clubNumber}/employees`;
+        
+        const response = await axios.get(url, {
+            headers: {
+                'accept': 'application/json',
+                'app_id': ABC_APP_ID,
+                'app_key': ABC_APP_KEY
+            }
+        });
+        
+        const employees = response.data.employees || [];
+        
+        // Process and return summary
+        const activeEmployees = employees.filter(emp => 
+            emp.employment?.employeeStatus?.toLowerCase() === 'active'
+        );
+        
+        res.json({
+            success: true,
+            totalEmployees: employees.length,
+            activeEmployees: activeEmployees.length,
+            activeNames: activeEmployees.map(emp => 
+                `${emp.personal?.firstName || ''} ${emp.personal?.lastName || ''}`.trim()
+            ).sort()
+        });
+        
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            response: error.response?.data
+        });
+    }
+});
+
 // Master sync endpoint - runs ALL syncs and sends one summary email
 app.post('/api/sync-all', async (req, res) => {
     console.log('\n🚀 Starting Master Sync - All Endpoints');
@@ -2606,7 +2872,7 @@ app.post('/api/sync-all', async (req, res) => {
     
     try {
         // 1. Sync new members (yesterday)
-        console.log('\n📝 [1/5] Running new members sync...');
+        console.log('\n📝 [1/7] Running new members sync...');
         try {
             const syncResponse = await axios.post(`http://localhost:${PORT}/api/sync`, {});
             masterResults.syncs.newMembers = {
@@ -2623,7 +2889,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 2. Sync cancelled members
-        console.log('\n📝 [2/6] Running cancelled members sync...');
+        console.log('\n📝 [2/7] Running cancelled members sync...');
         try {
             const cancelledResponse = await axios.post(`http://localhost:${PORT}/api/sync-cancelled`, {});
             masterResults.syncs.cancelledMembers = {
@@ -2640,7 +2906,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 3. Sync past due members
-        console.log('\n📝 [3/6] Running past due members sync...');
+        console.log('\n📝 [3/7] Running past due members sync...');
         try {
             const pastDueResponse = await axios.post(`http://localhost:${PORT}/api/sync-past-due`, {});
             masterResults.syncs.pastDueMembers = {
@@ -2657,7 +2923,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 4. Sync new PT services
-        console.log('\n📝 [4/6] Running new PT services sync...');
+        console.log('\n📝 [4/7] Running new PT services sync...');
         try {
             const ptNewResponse = await axios.post(`http://localhost:${PORT}/api/sync-pt-new`, {});
             masterResults.syncs.newPTServices = {
@@ -2674,7 +2940,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 5. Sync deactivated PT services
-        console.log('\n📝 [5/6] Running deactivated PT services sync...');
+        console.log('\n📝 [5/7] Running deactivated PT services sync...');
         try {
             const ptDeactivatedResponse = await axios.post(`http://localhost:${PORT}/api/sync-pt-deactivated`, {});
             masterResults.syncs.deactivatedPTServices = {
@@ -2691,7 +2957,7 @@ app.post('/api/sync-all', async (req, res) => {
         }
         
         // 6. Check PIF completions
-        console.log('\n📝 [6/6] Running PIF completion check...');
+        console.log('\n📝 [6/7] Running PIF completion check...');
         try {
             const pifCompletedResponse = await axios.post(`http://localhost:${PORT}/api/sync-pif-completed`, {});
             masterResults.syncs.pifCompleted = {
@@ -2705,6 +2971,23 @@ app.post('/api/sync-all', async (req, res) => {
                 error: error.message
             };
             console.error('❌ PIF completion check failed:', error.message);
+        }
+        
+        // 7. Sync employees to GHL dropdowns
+        console.log('\n📝 [7/7] Running employee sync...');
+        try {
+            const employeeResponse = await axios.post(`http://localhost:${PORT}/api/sync-employees`, {});
+            masterResults.syncs.employees = {
+                success: true,
+                results: employeeResponse.data.results
+            };
+            console.log('✅ Employee sync complete');
+        } catch (error) {
+            masterResults.syncs.employees = {
+                success: false,
+                error: error.message
+            };
+            console.error('❌ Employee sync failed:', error.message);
         }
         
         // Calculate duration
