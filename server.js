@@ -1462,7 +1462,8 @@ app.get('/', (req, res) => {
             'POST /api/sync-pt-new': 'Sync new PT services (tag: pt current)',
             'POST /api/sync-pt-deactivated': 'Sync deactivated PT (tag: ex pt)',
             'GET /api/test-abc': 'Test ABC API connection',
-            'GET /api/test-ghl': 'Test GHL API connection'
+            'GET /api/test-ghl': 'Test GHL API connection',
+            'GET /api/custom-fields/:clubNumber': 'List all custom fields for a location (find field IDs)'
         },
         configuration: {
             abc_api: ABC_APP_ID && ABC_APP_KEY ? 'configured' : 'NOT CONFIGURED',
@@ -2714,10 +2715,11 @@ app.post('/api/sync-pif-completed', async (req, res) => {
     }
 });
 
-// Sync employees from ABC to GHL dropdown
+// Sync employees from ABC to GHL dropdowns (Tour Team Member + Day One Booking Team Member)
 app.post('/api/sync-employees', async (req, res) => {
     console.log('\n========================================');
-    console.log('EMPLOYEE SYNC: ABC → GHL Dropdown');
+    console.log('EMPLOYEE SYNC: ABC → GHL Dropdowns');
+    console.log('(Tour Team Member + Day One Booking Team Member)');
     console.log('========================================');
     
     const results = {
@@ -2729,13 +2731,13 @@ app.post('/api/sync-employees', async (req, res) => {
     };
     
     try {
-        // Get enabled clubs that have an employee field ID configured
+        // Get enabled clubs that have at least one employee field ID configured
         const enabledClubs = clubsConfig.clubs.filter(club => 
-            club.enabled !== false && club.ghlEmployeeFieldId
+            club.enabled !== false && (club.ghlEmployeeFieldId || club.ghlDayOneBookingFieldId)
         );
         results.totalClubs = enabledClubs.length;
         
-        console.log(`Processing ${enabledClubs.length} enabled clubs with employee field configured...`);
+        console.log(`Processing ${enabledClubs.length} enabled clubs with employee field(s) configured...`);
         
         for (const club of enabledClubs) {
             console.log(`\n--- Processing ${club.clubName} (${club.clubNumber}) ---`);
@@ -2745,6 +2747,7 @@ app.post('/api/sync-employees', async (req, res) => {
                 clubNumber: club.clubNumber,
                 employees: [],
                 employeeCount: 0,
+                fieldsUpdated: [],
                 status: 'pending',
                 error: null
             };
@@ -2761,17 +2764,48 @@ app.post('/api/sync-employees', async (req, res) => {
                     clubResult.error = 'No active employees found';
                     results.skipped++;
                 } else {
-                    // 2. Update GHL dropdown using club-specific field ID
-                    const updateResult = await updateGHLEmployeeDropdown(
-                        club.ghlLocationId,
-                        club.ghlEmployeeFieldId,
-                        employees,
-                        club.ghlApiKey
-                    );
+                    // 2. Update Tour Team Member field (if configured)
+                    if (club.ghlEmployeeFieldId) {
+                        try {
+                            await updateGHLEmployeeDropdown(
+                                club.ghlLocationId,
+                                club.ghlEmployeeFieldId,
+                                employees,
+                                club.ghlApiKey
+                            );
+                            console.log(`✅ Updated "Tour Team Member" with ${employees.length} employees`);
+                            clubResult.fieldsUpdated.push('Tour Team Member');
+                        } catch (fieldError) {
+                            console.error(`❌ Error updating Tour Team Member field: ${fieldError.message}`);
+                            clubResult.error = (clubResult.error || '') + `Tour Team Member: ${fieldError.message}; `;
+                        }
+                    }
                     
-                    console.log(`✅ Updated ${club.clubName} with ${employees.length} employees`);
-                    clubResult.status = 'synced';
-                    results.synced++;
+                    // 3. Update Day One Booking Team Member field (if configured)
+                    if (club.ghlDayOneBookingFieldId) {
+                        try {
+                            await updateGHLEmployeeDropdown(
+                                club.ghlLocationId,
+                                club.ghlDayOneBookingFieldId,
+                                employees,
+                                club.ghlApiKey
+                            );
+                            console.log(`✅ Updated "Day One Booking Team Member" with ${employees.length} employees`);
+                            clubResult.fieldsUpdated.push('Day One Booking Team Member');
+                        } catch (fieldError) {
+                            console.error(`❌ Error updating Day One Booking Team Member field: ${fieldError.message}`);
+                            clubResult.error = (clubResult.error || '') + `Day One Booking Team Member: ${fieldError.message}; `;
+                        }
+                    }
+                    
+                    // Determine overall status
+                    if (clubResult.fieldsUpdated.length > 0) {
+                        clubResult.status = 'synced';
+                        results.synced++;
+                    } else {
+                        clubResult.status = 'error';
+                        results.errors++;
+                    }
                 }
                 
             } catch (error) {
@@ -2845,6 +2879,56 @@ app.get('/api/test-employees/:clubNumber', async (req, res) => {
     } catch (error) {
         res.status(500).json({
             success: false,
+            error: error.message,
+            response: error.response?.data
+        });
+    }
+});
+
+// Get all custom fields for a location (useful for finding field IDs)
+app.get('/api/custom-fields/:clubNumber', async (req, res) => {
+    const { clubNumber } = req.params;
+    
+    // Find the club config
+    const club = clubsConfig.clubs.find(c => c.clubNumber === clubNumber);
+    if (!club) {
+        return res.status(404).json({ error: `Club ${clubNumber} not found in config` });
+    }
+    
+    try {
+        const response = await axios.get(
+            `https://services.leadconnectorhq.com/locations/${club.ghlLocationId}/customFields`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${club.ghlApiKey}`,
+                    'Version': '2021-07-28',
+                    'Accept': 'application/json'
+                }
+            }
+        );
+        
+        const fields = response.data.customFields || [];
+        
+        // Filter to just dropdowns and format nicely
+        const dropdownFields = fields
+            .filter(f => f.dataType === 'SINGLE_OPTIONS' || f.dataType === 'MULTIPLE_OPTIONS')
+            .map(f => ({
+                id: f.id,
+                name: f.name,
+                type: f.dataType,
+                options: f.options || []
+            }));
+        
+        res.json({
+            clubName: club.clubName,
+            clubNumber: club.clubNumber,
+            totalFields: fields.length,
+            dropdownFields: dropdownFields,
+            allFields: fields.map(f => ({ id: f.id, name: f.name, type: f.dataType }))
+        });
+        
+    } catch (error) {
+        res.status(500).json({
             error: error.message,
             response: error.response?.data
         });
